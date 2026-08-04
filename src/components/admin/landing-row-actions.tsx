@@ -3,7 +3,15 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Eye, EyeOff, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Copy,
+  ExternalLink,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,33 +31,49 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  deleteProduct,
-  toggleProductActive,
-} from "@/app/admin/(shell)/products/actions";
+  archiveLanding,
+  deleteLanding,
+  duplicateLanding,
+  restoreLanding,
+} from "@/app/admin/landings/actions";
 
-export function ProductRowActions({
+export function LandingRowActions({
   id,
   name,
-  active,
+  slug,
+  status,
 }: {
   id: string;
   name: string;
-  active: boolean;
+  slug: string;
+  status: "draft" | "published" | "archived";
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function handleToggle() {
+  function handleDuplicate() {
     startTransition(async () => {
-      await toggleProductActive(id, !active);
-      toast.success(active ? "Producto desactivado" : "Producto activado");
+      await duplicateLanding(id);
+      toast.success("Landing duplicada como borrador");
+    });
+  }
+
+  function handleArchiveToggle() {
+    startTransition(async () => {
+      if (status === "archived") {
+        await restoreLanding(id);
+        toast.success("Landing restaurada como borrador");
+      } else {
+        await archiveLanding(id);
+        toast.success("Landing archivada (ya no es pública)");
+      }
     });
   }
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteProduct(id);
-      toast.success("Producto eliminado");
+      await deleteLanding(id);
+      toast.success("Landing eliminada");
       setConfirmOpen(false);
     });
   }
@@ -68,25 +92,42 @@ export function ProductRowActions({
         >
           <MoreHorizontal className="h-4 w-4" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
-            render={<Link href={`/admin/products/${id}`} />}
+            render={<Link href={`/admin/landings/${id}/editor`} />}
             className="cursor-pointer"
           >
             <Pencil className="h-4 w-4" aria-hidden />
-            Editar
+            Abrir editor
           </DropdownMenuItem>
+          {status === "published" && (
+            <DropdownMenuItem
+              render={<a href={`/${slug}`} target="_blank" rel="noreferrer" />}
+              className="cursor-pointer"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              Ver página
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
-            onSelect={handleToggle}
+            onSelect={handleDuplicate}
             disabled={pending}
             className="cursor-pointer"
           >
-            {active ? (
-              <EyeOff className="h-4 w-4" aria-hidden />
+            <Copy className="h-4 w-4" aria-hidden />
+            Duplicar
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={handleArchiveToggle}
+            disabled={pending}
+            className="cursor-pointer"
+          >
+            {status === "archived" ? (
+              <ArchiveRestore className="h-4 w-4" aria-hidden />
             ) : (
-              <Eye className="h-4 w-4" aria-hidden />
+              <Archive className="h-4 w-4" aria-hidden />
             )}
-            {active ? "Desactivar" : "Activar"}
+            {status === "archived" ? "Restaurar" : "Archivar"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -105,8 +146,8 @@ export function ProductRowActions({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar “{name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Las landings que usen este
-              producto quedarán sin producto asociado.
+              Esta acción no se puede deshacer. Si la landing está publicada,
+              /{slug} dejará de existir. Los pedidos asociados se conservan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

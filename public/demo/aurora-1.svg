@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2ff"/>
+      <stop offset="1" stop-color="#c7d2fe"/>
+    </linearGradient>
+    <linearGradient id="bottle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <ellipse cx="400" cy="660" rx="190" ry="28" fill="#4338ca" opacity="0.15"/>
+  <rect x="330" y="120" width="140" height="60" rx="18" fill="#312e81"/>
+  <rect x="310" y="180" width="180" height="480" rx="60" fill="url(#bottle)"/>
+  <rect x="340" y="300" width="120" height="180" rx="16" fill="#ffffff" opacity="0.9"/>
+  <text x="400" y="380" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#4338ca" text-anchor="middle">AURORA</text>
+  <text x="400" y="415" font-family="Arial, sans-serif" font-size="16" fill="#6366f1" text-anchor="middle">24h frío · 12h calor</text>
+</svg>

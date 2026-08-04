@@ -52,6 +52,7 @@ export type OrderCustomer = {
 export const landingStatusEnum = pgEnum("landing_status", [
   "draft",
   "published",
+  "archived",
 ]);
 
 export const checkoutModeEnum = pgEnum("checkout_mode", ["cod", "gateway"]);

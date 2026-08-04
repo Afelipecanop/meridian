@@ -1,7 +1,7 @@
 # Informe de Proyecto — Meridian
 
-**Fecha:** 3 de agosto de 2026 (actualizado)
-**Estado general:** Etapas 0, 1 y 2 completadas y verificadas · Etapa 3 **no iniciada** (siguiente)
+**Fecha:** 4 de agosto de 2026 (actualizado)
+**Estado general:** Etapas 0–7 con el código completo y verificado. Pendientes que requieren cuentas del propietario: **ejecutar el despliegue** siguiendo [`DEPLOY.md`](DEPLOY.md) y la **compra sandbox de Wompi** con llaves reales. La plataforma vende end-to-end (COD + pago online) en local sobre build de producción.
 
 ---
 
@@ -16,11 +16,11 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 | 0 — Migración a Next.js | Base Next 16 + Tailwind 4 + shadcn/ui | ✅ Completada |
 | 1 — BD y autenticación | Esquema Drizzle en Neon, Auth.js, login diseñado | ✅ Completada y verificada e2e |
 | 2 — Admin + CRUD productos | Layout sidebar, productos, imágenes, dashboard | ✅ Completada y verificada |
-| 3 — Secciones + landing pública | Registro de secciones, `/:slug` con SSR/SEO | ⏳ Pendiente |
-| 4 — Editor visual | Editor tipo Shopify con preview en vivo | ⏳ Pendiente |
-| 5 — Checkout COD + pedidos | Formulario de pedido y gestión en admin | ⏳ Pendiente |
-| 6 — Pasarela de pago | Capa PaymentProvider (Wompi/MercadoPago/Stripe) | ⏳ Pendiente |
-| 7 — Producción | Despliegue Vercel, seguridad, SEO técnico | ⏳ Pendiente |
+| 3 — Secciones + landing pública | Registro de secciones, `/:slug` con SSR/SEO | ✅ Completada y verificada |
+| 4 — Editor visual | Editor tipo Shopify con preview en vivo | ✅ Completada y verificada |
+| 5 — Checkout COD + pedidos | Formulario de pedido y gestión en admin | ✅ Completada y verificada |
+| 6 — Pasarela de pago | Capa PaymentProvider + Wompi + mock | ✅ Completada (sandbox real pendiente de llaves) |
+| 7 — Producción | Despliegue Vercel, seguridad, SEO técnico | ✅ Código listo · despliegue por ejecutar (`DEPLOY.md`) |
 
 ### Detalle de la Etapa 2
 
@@ -32,11 +32,60 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 - Dashboard con contadores reales (productos, landings publicadas, pedidos nuevos) y CTA de arranque; páginas stub para Landings y Pedidos.
 - Verificación: las 5 rutas del admin responden 200 con sesión; upload responde 201 autenticado y 401 sin sesión.
 
+### Detalle de la Etapa 3
+
+- **Registro de secciones** (`src/components/sections/registry.ts`): contrato único `type → { componente, esquema Zod, defaults, label, ícono }`. Agregar un tipo nuevo = crear componente + esquema y registrarlo; el resto del sistema no cambia.
+- **9 secciones implementadas:** Hero, Beneficios (11 íconos elegibles), Galería, Testimonios (con rating), FAQ (acordeón nativo `details`), Oferta/Precio (usa precio y precio de comparación del producto, calcula % de descuento), Countdown (client, sin desajustes de hidratación), Formulario de pedido (client; cantidad + total en vivo; el envío real llega con `POST /api/checkout` en la Etapa 5) y HTML personalizado.
+- **Esquemas Zod compartidos** (`src/lib/zod-schemas/sections.ts`): todos los campos con `.default()`, de modo que `schema.parse({})` produce la configuración inicial — el editor de la Etapa 4 generará sus formularios desde aquí.
+- **Página pública `/:slug`** (`src/app/(public)/[slug]/page.tsx`): consulta memoizada con `cache` (landing + producto en un join), tema por landing como CSS vars (`--lp-primary/bg/text` + fuente), `generateMetadata` (title, description, OG, Twitter, canonical), ISR con `revalidate = 300`, sin navegación de salida y 404 propio para slugs no publicados.
+- **Sanitización en servidor** (`src/lib/sanitize.ts` con `sanitize-html`): sin `<script>` ni iframes; enlaces con `rel="noopener noreferrer"`. Los píxeles van solo por el campo dedicado.
+- **Píxeles** (`src/components/sections/pixels.tsx`): Meta, TikTok y GA4 inyectados con `next/script` desde `landings.pixels`.
+- **Seed demo** (`npm run db:seed:landing`): producto "Botella Térmica Aurora" (3 SVGs en `public/demo/`) + landing publicada `/botella-aurora` con las 9 secciones. Idempotente.
+- Verificación sobre build de producción: `/botella-aurora` → 200 con meta tags correctos y todas las secciones; `/no-existe` → 404.
+
+### Detalle de la Etapa 4
+
+- **CRUD de landings** (`/admin/landings`): lista con estado (Borrador/Publicada/Archivada + "cambios sin publicar"), crear desde plantilla base de 7 secciones (diálogo con slug autogenerado), duplicar (slug `-copia-n`, ids de sección nuevos), archivar/restaurar (nuevo estado `archived`, migración `0001`) y eliminar con confirmación.
+- **Editor visual** (`/admin/landings/:id/editor`): fullscreen (el resto del admin quedó bajo el grupo de rutas `(shell)` para que el editor no herede el sidebar). Tres paneles: lista de secciones reordenable con dnd-kit (ocultar/eliminar/agregar), preview central y panel de ajustes.
+- **Panel de ajustes declarativo:** `field-defs.ts` describe los campos de cada tipo de sección (texto, textarea, código, boolean, número, select, imagen con upload, lista de imágenes, fecha-hora, listas de items plegables). Los ajustes globales cubren nombre, slug (validado + reservados), producto, modo de checkout, tema (colores + fuente), SEO y píxeles.
+- **Preview en vivo:** iframe a `/admin/landings/:id/preview`, que renderiza el borrador con los mismos componentes públicos y se actualiza vía `postMessage` (verificando mismo origen) en cada cambio; toggle escritorio/móvil (375 px).
+- **Autosave y publicación:** autosave con debounce de 1.2 s y estado visible; Publicar guarda el borrador, copia `sections` → `published_sections` y revalida `/:slug` (y el slug anterior si cambió); Despublicar vuelve a borrador. Todas las server actions re-validan sesión, slug y settings (Zod por tipo de sección).
+- Verificación sobre build de producción con sesión real (cookies vía curl): editor/preview/lista 200 autenticados, 307 sin sesión; preview server-renderiza las secciones; `/botella-aurora` sigue 200. `AUTH_TRUST_HOST=true` requerido con `next start` fuera de Vercel (documentado). Pendiente: QA manual del drag & drop y publicación desde navegador.
+
+### Detalle de la Etapa 5
+
+- **`POST /api/checkout`:** esquema Zod compartido cliente/servidor; rate-limit en memoria (5/min por IP; cambiar a Upstash/Redis si se escala horizontalmente — misma firma en `src/lib/rate-limit.ts`); honeypot que responde éxito falso sin crear pedido (sin señal para el bot); valida landing publicada en modo COD y producto activo; el precio y el total se calculan **siempre en servidor**; crea el pedido + evento `created` en `order_events`.
+- **Formulario de pedido real:** envía a la API con estado de carga, errores de validación en línea y mensaje de gracias configurable desde el editor (`successTitle`/`successMessage`); dentro del iframe del editor el envío se simula para no crear pedidos de prueba.
+- **Módulo de pedidos en admin:** lista con filtros combinables (estado, landing, fecha hoy/7d/30d/todo) y paginación; detalle con resumen del pedido, tarjeta del cliente (teléfono clicable, dirección, notas), cambio de estado con select (historial automático en `order_events`) y notas internas.
+- **Dashboard real:** pedidos de hoy con ventas del día, distribución por estado con barras y top de landings por pedidos e ingresos (excluyendo cancelados); cada métrica enlaza a la lista filtrada.
+- Verificación e2e sobre build de producción: pedido 201 visible en admin; honeypot 201 falso sin fila nueva; payload inválido 400; landing inexistente 404; 6ª petición del minuto 429; acentos correctos (UTF-8) en BD y admin.
+
+### Detalle de la Etapa 6
+
+- **Pasarela elegida: Wompi.** La operación es Colombia (COP, es-CO) y Stripe no opera para comercios locales; MercadoPago queda a una clase de distancia gracias a la capa agnóstica.
+- **Capa `PaymentProvider`** (`src/lib/payments/`): `createCheckout` (devuelve URL de redirección) y `verifyWebhook` (normaliza a `paid`/`failed`/ignorado). Implementaciones: **Wompi** (Web Checkout hosted con firma de integridad SHA-256; webhook `transaction.updated` verificado por checksum de eventos) y **mock** (`PAYMENT_PROVIDER=mock`, solo desarrollo: webhook manual firmado con `MOCK_WEBHOOK_SECRET`, deshabilitado si no está activo explícitamente).
+- **Flujo:** checkout en modo pasarela crea el pedido con `payment_status=pending` y devuelve `redirectUrl`; el webhook verificado marca `paid`/`failed` con evento en el historial; idempotente (un pago aprobado no se revierte por webhooks tardíos). El precio se sigue calculando en servidor.
+- **En la landing:** el formulario redirige al pago; al volver, un banner 100% cliente lee `?pedido=` y consulta `GET /api/checkout/status` con polling (~1 min) — éxito, pendiente o fallo con "Reintentar" — sin sacrificar el ISR de la página.
+- **En el admin:** columna "Pago" en la lista (Contra entrega / Pendiente / Pagado / Fallido), método + referencia de transacción y eventos de pago en el detalle.
+- Verificación: test unitario de firmas Wompi (la firma de integridad reproduce el ejemplo oficial de la doc; checksum válido/alterado/DECLINED/evento-ignorado) y e2e completo con mock sobre build de producción (9 casos: 201+redirect, pending, firma inválida 400, APPROVED→paid en admin, idempotencia, proveedor desconocido 404).
+- **Pendiente para cerrar:** llaves sandbox de Wompi en `.env`, registrar `https://<dominio>/api/webhooks/wompi` como URL de eventos en su panel y hacer la compra de prueba.
+
+### Detalle de la Etapa 7
+
+- **SEO técnico:** `robots.txt` (bloquea `/admin`, `/api`, `/login`) y `sitemap.xml` con las landings publicadas, regenerado cada hora.
+- **Imágenes:** hero y galería con `next/image` (`fill` + `sizes`, `priority` en el hero); `remotePatterns` https para URLs arbitrarias del editor; SVG servidos con sandbox; en producción las subidas van a **Vercel Blob** (`storage.ts` detecta `BLOB_READ_WRITE_TOKEN`, misma firma).
+- **Seguridad:** headers solo en producción — CSP básica (scripts solo propios + dominios de píxeles; `frame-ancestors 'self'` mantiene el preview del editor; `form-action 'self'`), `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`. En dev no se aplican (el dev server necesita eval).
+- **Errores:** error boundary global con botón de reintento; 404 propio ya existía.
+- **Config:** `turbopack.root`/`outputFileTracingRoot` fijados (elimina los warnings por lockfiles fuera del repo).
+- **Guía de despliegue** ([`DEPLOY.md`](DEPLOY.md)): Vercel paso a paso — envs de producción, Blob store, migraciones + seed con contraseña fuerte, URL de eventos de Wompi, dominio y checklist post-deploy. Documenta lo pospuesto: dominios personalizados por landing, notificaciones de pedido, rate-limit distribuido y analíticas propias.
+- Verificación (build de producción local): headers presentes en las respuestas, robots/sitemap correctos, `/_next/image` optimizando (200), y admin + editor + checkout operativos bajo la CSP.
+
 ## 2b. Métricas del código actual
 
 | Métrica | Valor |
 |---------|-------|
-| Rutas | 11 (5 públicas/auth + 5 admin + 2 API: auth y upload) |
+| Rutas | 18 (6 públicas/auth + 8 admin + 5 API: auth, upload, checkout, checkout/status, webhooks/[provider]) |
+| Migraciones | `0000` (esquema) + `0001` (estado `archived`) |
 | Tablas en BD | 6 + 4 enums (migración `0000` aplicada) |
 | Componentes shadcn/ui | 16 instalados |
 | Versiones clave | Next 16.3 · React 19.2 · Tailwind 4.3 · next-auth 5.0.0-beta.32 · Drizzle 0.45 |
@@ -70,15 +119,16 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 |-------|---------|-----------------|
 | Contraseña admin por defecto | Seguridad | Cambiarla con `ADMIN_PASSWORD=... npm run db:seed` |
 | next-auth en beta | Posibles breaking changes | Fijar versión exacta antes de producción |
-| Pasarela de pago sin definir | Bloquea Etapa 6 | Decidir Wompi vs MercadoPago vs Stripe según país/cuenta |
-| Uploads locales no sirven en Vercel | Bloquea producción | Migrar a Vercel Blob en Etapa 7 (ya abstraído) |
-| Imágenes remotas en `next/image` | Menor | Configurar `remotePatterns` al pasar a Blob |
+| Sandbox de Wompi sin probar | Cierre de Etapa 6 | Poner llaves `pub_test_*` en `.env`, registrar webhook y comprar en sandbox |
+| Despliegue sin ejecutar | Cierre del proyecto | Seguir `DEPLOY.md` con cuentas de Vercel/Neon/Wompi |
 
 ## 7. Próximos pasos
 
-1. Etapa 3: registro de secciones y render público `/:slug` con SEO — el corazón de la propuesta de valor.
-2. Etapa 4: editor visual (la etapa de mayor esfuerzo, ~50% del total restante).
-3. Etapa 5: checkout contra entrega y módulo de pedidos.
+1. **Ejecutar el despliegue** siguiendo [`DEPLOY.md`](DEPLOY.md): Vercel + envs + Blob + migraciones + seed con contraseña fuerte.
+2. Cerrar Etapa 6 con Wompi real: llaves sandbox, URL de eventos y compra de prueba (checklist en DEPLOY.md).
+3. QA manual en navegador: editor (drag & drop, autosave, publicar) y flujo de compra completo (COD y pasarela).
+4. Medir Lighthouse de la landing en producción y ajustar si baja de 85 en performance.
+5. Opcionales pospuestos: notificaciones de pedido, analíticas propias, dominios por landing.
 
 ---
 

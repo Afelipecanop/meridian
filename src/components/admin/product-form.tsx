@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Product } from "@/db/schema";
-import type { ProductFormState } from "@/app/admin/products/actions";
+import type { ProductFormState } from "@/app/admin/(shell)/products/actions";
 
 type ProductAction = (
   prev: ProductFormState,

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0fdfa"/>
+      <stop offset="1" stop-color="#99f6e4"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg3)"/>
+  <circle cx="400" cy="400" r="230" fill="#14b8a6" opacity="0.15"/>
+  <rect x="330" y="200" width="140" height="400" rx="48" fill="#0d9488"/>
+  <rect x="355" y="152" width="90" height="48" rx="14" fill="#134e4a"/>
+  <path d="M 250 520 q 60 -40 100 0 t 100 0 t 100 0" stroke="#0f766e" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <text x="400" y="700" font-family="Arial, sans-serif" font-size="24" fill="#0f766e" text-anchor="middle">Acero inoxidable libre de BPA</text>
+</svg>

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."landing_status" ADD VALUE 'archived';

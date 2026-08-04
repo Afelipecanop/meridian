@@ -8,6 +8,13 @@
       "when": 1785816537328,
       "tag": "0000_organic_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785820858818,
+      "tag": "0001_yummy_guardian",
+      "breakpoints": true
     }
   ]
 }
