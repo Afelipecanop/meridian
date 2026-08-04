@@ -3,11 +3,13 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { orderEvents, orders } from "@/db/schema";
+import { boldProvider } from "@/lib/payments/bold";
 import { mockProvider } from "@/lib/payments/mock";
 import { wompiProvider } from "@/lib/payments/wompi";
 import type { PaymentProvider } from "@/lib/payments/provider";
 
 function resolveProvider(name: string): PaymentProvider | null {
+  if (name === "bold") return boldProvider;
   if (name === "wompi") return wompiProvider;
   // El mock solo existe si está activado explícitamente (nunca en producción).
   if (name === "mock" && process.env.PAYMENT_PROVIDER === "mock") {
@@ -51,8 +53,10 @@ export async function POST(
     return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
   }
 
-  // Idempotencia: un pedido pagado no cambia por webhooks repetidos o tardíos.
-  if (order.paymentStatus === "paid") {
+  // Idempotencia: un pedido pagado no cambia por webhooks repetidos o
+  // tardíos, y un webhook que ya procesamos (mismo payment_id de la
+  // pasarela) no se vuelve a aplicar aunque llegue duplicado.
+  if (order.paymentStatus === "paid" || order.paymentRef === result.providerRef) {
     return NextResponse.json({ received: true });
   }
 

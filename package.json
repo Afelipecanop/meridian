@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
-    "db:seed:landing": "tsx scripts/seed-landing.ts"
+    "db:seed:landing": "tsx scripts/seed-landing.ts",
+    "test:bold": "tsx scripts/test-bold.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

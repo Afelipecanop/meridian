@@ -1,7 +1,7 @@
 # Informe de Proyecto — Meridian
 
 **Fecha:** 4 de agosto de 2026 (actualizado)
-**Estado general:** Etapas 0–7 con el código completo y verificado. Pendientes que requieren cuentas del propietario: **ejecutar el despliegue** siguiendo [`DEPLOY.md`](DEPLOY.md) y la **compra sandbox de Wompi** con llaves reales. La plataforma vende end-to-end (COD + pago online) en local sobre build de producción.
+**Estado general:** Etapas 0–7 completas y **la plataforma está desplegada en producción** (Vercel con variables de entorno configuradas + Neon; deploy ejecutado por el propietario). El usuario admin de producción está creado y el admin de desarrollo por defecto fue eliminado de la BD. Pendientes del checklist post-deploy: **compra sandbox de Wompi** (registrar la URL de eventos en su panel), verificación del Blob store y QA en navegador.
 
 ---
 
@@ -20,7 +20,7 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 | 4 — Editor visual | Editor tipo Shopify con preview en vivo | ✅ Completada y verificada |
 | 5 — Checkout COD + pedidos | Formulario de pedido y gestión en admin | ✅ Completada y verificada |
 | 6 — Pasarela de pago | Capa PaymentProvider + Wompi + mock | ✅ Completada (sandbox real pendiente de llaves) |
-| 7 — Producción | Despliegue Vercel, seguridad, SEO técnico | ✅ Código listo · despliegue por ejecutar (`DEPLOY.md`) |
+| 7 — Producción | Despliegue Vercel, seguridad, SEO técnico | ✅ Completada — **desplegada en Vercel**; checklist post-deploy en curso (`DEPLOY.md`) |
 
 ### Detalle de la Etapa 2
 
@@ -93,9 +93,10 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 
 ## 3. Infraestructura y datos
 
-- **Base de datos:** PostgreSQL en Neon (región `sa-east-1`), conectada vía Drizzle ORM.
-- **Migración aplicada:** `0000_organic_purifiers.sql` — tablas `users`, `products`, `landings`, `orders`, `order_events`, `assets` + 4 enums de estado.
-- **Usuario admin:** `admin@meridian.local` creado por seed. ⚠️ Contraseña por defecto pendiente de cambio.
+- **Hosting:** Vercel, con las variables de entorno de producción configuradas por el propietario (deploy ejecutado el 2026-08-04).
+- **Base de datos:** PostgreSQL en Neon (región `sa-east-1`), conectada vía Drizzle ORM. Es la misma instancia que usa Vercel en producción.
+- **Migraciones aplicadas:** `0000_organic_purifiers.sql` (esquema completo: `users`, `products`, `landings`, `orders`, `order_events`, `assets` + 4 enums) y `0001_yummy_guardian.sql` (estado `archived`).
+- **Usuario admin de producción:** `canos184@gmail.com`, creado con `npm run db:seed` y contraseña propia. El admin de desarrollo por defecto (`admin@meridian.local` / `admin1234`) fue **eliminado** de la BD por seguridad; se puede recrear para uso local con `npm run db:seed`.
 
 ## 4. Decisiones técnicas tomadas
 
@@ -117,15 +118,17 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 
 | Punto | Impacto | Acción prevista |
 |-------|---------|-----------------|
-| Contraseña admin por defecto | Seguridad | Cambiarla con `ADMIN_PASSWORD=... npm run db:seed` |
-| next-auth en beta | Posibles breaking changes | Fijar versión exacta antes de producción |
-| Sandbox de Wompi sin probar | Cierre de Etapa 6 | Poner llaves `pub_test_*` en `.env`, registrar webhook y comprar en sandbox |
-| Despliegue sin ejecutar | Cierre del proyecto | Seguir `DEPLOY.md` con cuentas de Vercel/Neon/Wompi |
+| next-auth en beta | Posibles breaking changes | Versión fijada en `package.json`; revisar changelog antes de actualizar |
+| Sandbox de Wompi sin probar | Cierre formal de Etapa 6 | Registrar `https://<dominio>/api/webhooks/wompi` en el panel de Wompi y hacer la compra de prueba |
+| Dev y producción comparten la BD de Neon | Datos de prueba locales aparecen en producción | Crear un branch/BD separada de Neon para desarrollo cuando haya ventas reales |
+| Subidas de imágenes en producción | Rotas sin Blob | Verificar que el store de Vercel Blob está conectado (`BLOB_READ_WRITE_TOKEN`) |
+
+*Resueltos:* contraseña admin por defecto (usuario propio creado, default eliminado) y ejecución del despliegue (hecho el 2026-08-04).
 
 ## 7. Próximos pasos
 
-1. **Ejecutar el despliegue** siguiendo [`DEPLOY.md`](DEPLOY.md): Vercel + envs + Blob + migraciones + seed con contraseña fuerte.
-2. Cerrar Etapa 6 con Wompi real: llaves sandbox, URL de eventos y compra de prueba (checklist en DEPLOY.md).
+1. Cerrar Etapa 6 con Wompi real: registrar la URL de eventos `https://<dominio>/api/webhooks/wompi` en el panel de Wompi y hacer la compra de prueba en sandbox.
+2. Completar el checklist post-deploy de [`DEPLOY.md`](DEPLOY.md): headers, subida de imagen a Blob, pedido COD de prueba en producción.
 3. QA manual en navegador: editor (drag & drop, autosave, publicar) y flujo de compra completo (COD y pasarela).
 4. Medir Lighthouse de la landing en producción y ajustar si baja de 85 en performance.
 5. Opcionales pospuestos: notificaciones de pedido, analíticas propias, dominios por landing.

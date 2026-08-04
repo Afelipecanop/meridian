@@ -19,7 +19,7 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 | 4 — Editor visual | ✅ Completada |
 | 5 — Checkout COD + pedidos | ✅ Completada |
 | 6 — Pasarela de pago | ✅ Completada (falta prueba con sandbox real de Wompi) |
-| 7 — Producción | ✅ Código listo — **falta ejecutar el despliegue** (cuentas del propietario; guía en [`DEPLOY.md`](DEPLOY.md)) |
+| 7 — Producción | ✅ Completada — **desplegada en Vercel** (2026-08-04); checklist post-deploy en curso ([`DEPLOY.md`](DEPLOY.md)) |
 
 ---
 
@@ -213,7 +213,7 @@ src/
 
 ### Etapa 7 — Producción y pulido
 **Objetivo:** desplegar y endurecer.
-- [x] Preparación de despliegue en Vercel: guía paso a paso en [`DEPLOY.md`](DEPLOY.md) (envs, dominio, Blob, webhook Wompi, checklist post-deploy); `robots.txt` bloquea `/admin`, `/api` y `/login`; `sitemap.xml` con landings publicadas (revalida cada hora). **El despliegue mismo requiere las cuentas del propietario (Vercel/dominio) — pendiente de ejecutar.**
+- [x] Preparación de despliegue en Vercel: guía paso a paso en [`DEPLOY.md`](DEPLOY.md) (envs, dominio, Blob, webhook Wompi, checklist post-deploy); `robots.txt` bloquea `/admin`, `/api` y `/login`; `sitemap.xml` con landings publicadas (revalida cada hora). **Despliegue ejecutado por el propietario el 2026-08-04 (Vercel + envs de producción).**
 - [x] Optimización de imágenes: `next/image` en hero y galería (`fill` + `sizes`, `priority` en hero), `remotePatterns` https, SVG con sandbox; fuentes ya iban con `next/font` (Geist).
 - [x] Almacenamiento de producción: `src/lib/storage.ts` usa **Vercel Blob** cuando existe `BLOB_READ_WRITE_TOKEN` (local en dev, misma firma).
 - [x] Seguridad: headers en producción (CSP básica que solo permite scripts propios y de los píxeles soportados, `frame-ancestors 'self'` conservando el preview del editor, nosniff, referrer-policy, permissions-policy); sanitización HTML y rate-limits ya venían de E3/E5; rutas API de admin re-validan sesión.
@@ -223,7 +223,7 @@ src/
 
 **Criterio de éxito:** plataforma en producción con una landing real vendiendo.
 
-**✅ Código completado y verificado (2026-08-04); despliegue pendiente de ejecutar.** Smoke test sobre build de producción local: headers CSP/nosniff/referrer/permissions presentes; `robots.txt` y `sitemap.xml` correctos (sitemap incluye `/botella-aurora`); la landing renderiza con `next/image` (`/_next/image` responde 200); admin, editor y checkout siguen operativos bajo la CSP. El criterio de éxito se cierra al ejecutar `DEPLOY.md` con las cuentas reales.
+**✅ Completada (2026-08-04) — desplegada en producción.** Smoke test previo sobre build de producción local: headers CSP/nosniff/referrer/permissions presentes; `robots.txt` y `sitemap.xml` correctos (sitemap incluye `/botella-aurora`); la landing renderiza con `next/image` (`/_next/image` responde 200); admin, editor y checkout operativos bajo la CSP. El propietario ejecutó el despliegue en Vercel con las envs de producción (misma BD de Neon, migraciones ya aplicadas); el usuario admin de producción está creado y el admin de desarrollo por defecto fue eliminado. Queda el checklist post-deploy de `DEPLOY.md` (compra sandbox de Wompi, Blob, QA en navegador) para dar el criterio de éxito por cerrado con una landing vendiendo en vivo.
 
 ---
 

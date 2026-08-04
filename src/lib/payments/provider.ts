@@ -1,4 +1,5 @@
 import type { Order } from "@/db/schema";
+import { boldProvider } from "./bold";
 import { mockProvider } from "./mock";
 import { wompiProvider } from "./wompi";
 
@@ -16,8 +17,20 @@ export type CreateCheckoutInput = {
   redirectUrl: string;
 };
 
+/**
+ * Checkout embebido: en lugar de redirigir, la landing monta el script de la
+ * pasarela con estos atributos y ella renderiza su botón de pago.
+ */
+export type EmbeddedCheckout = {
+  provider: "bold";
+  scriptUrl: string;
+  /** Atributos data-* del script (incluye la firma de integridad). */
+  attributes: Record<string, string>;
+};
+
 export type CreateCheckoutResult =
-  | { ok: true; redirectUrl: string }
+  | { ok: true; redirectUrl: string; embedded?: undefined }
+  | { ok: true; embedded: EmbeddedCheckout; redirectUrl?: undefined }
   | { ok: false; error: string };
 
 /** Resultado normalizado de un webhook ya verificado. */
@@ -48,6 +61,9 @@ export function getPaymentProvider(): PaymentProvider | null {
   if (name === "mock") {
     // Solo para desarrollo/pruebas; nunca usar en producción.
     return mockProvider;
+  }
+  if (name === "bold") {
+    return boldProvider;
   }
   if (name === "wompi" || (!name && process.env.WOMPI_PUBLIC_KEY)) {
     return wompiProvider;

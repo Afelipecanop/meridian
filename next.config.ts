@@ -11,12 +11,14 @@ const isProd = process.env.NODE_ENV === "production";
  */
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://connect.facebook.net https://analytics.tiktok.com https://www.googletagmanager.com https://www.google-analytics.com",
+  "script-src 'self' 'unsafe-inline' https://checkout.bold.co https://connect.facebook.net https://analytics.tiktok.com https://www.googletagmanager.com https://www.google-analytics.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' https:",
   "font-src 'self' data:",
   "connect-src 'self' https:",
+  // El modal embebido del Botón de pagos Bold es un iframe de checkout.bold.co
+  "frame-src 'self' https://checkout.bold.co",
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",

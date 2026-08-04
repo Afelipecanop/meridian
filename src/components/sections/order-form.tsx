@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { CheckCircle2, Loader2, Minus, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import type { EmbeddedCheckout } from "@/lib/payments/provider";
 import type { OrderFormSettings } from "@/lib/zod-schemas/sections";
 import type { CheckoutResponse } from "@/lib/zod-schemas/checkout";
+import { BoldButton } from "./bold-button";
 import type { SectionProps } from "./types";
 
 const inputClass =
@@ -18,6 +20,7 @@ export function OrderFormSection({
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
+  const [embedded, setEmbedded] = useState<EmbeddedCheckout | null>(null);
   const [error, setError] = useState("");
 
   const unitPrice = product ? Number(product.price) : 0;
@@ -59,6 +62,12 @@ export function OrderFormSection({
         window.location.assign(data.redirectUrl);
         return;
       }
+      if (data.success && data.embedded) {
+        // Pasarela embebida (Bold): el pedido quedó pendiente; mostramos el
+        // botón de pago y el webhook confirmará el resultado.
+        setEmbedded(data.embedded);
+        return;
+      }
       if (data.success) {
         setSucceeded(true);
       } else {
@@ -97,6 +106,25 @@ export function OrderFormSection({
               >
                 Hacer otro pedido
               </button>
+            </div>
+          ) : embedded ? (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <h2 className="text-2xl font-bold tracking-tight text-balance">
+                Pedido registrado
+              </h2>
+              <p className="text-sm text-(--lp-text)/70">
+                Completa el pago con el botón seguro de Bold. Al terminar
+                volverás a esta página para ver la confirmación.
+              </p>
+              <BoldButton checkout={embedded} />
+              {product ? (
+                <p className="text-sm text-(--lp-text)/70">
+                  Total a pagar{" "}
+                  <span className="font-bold text-(--lp-primary)">
+                    {formatCurrency(total)}
+                  </span>
+                </p>
+              ) : null}
             </div>
           ) : (
             <>

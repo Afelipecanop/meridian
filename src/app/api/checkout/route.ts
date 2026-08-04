@@ -158,7 +158,9 @@ export async function POST(request: NextRequest) {
   });
 
   return json(
-    { success: true, orderId: order.id, redirectUrl: checkout.redirectUrl },
+    checkout.embedded
+      ? { success: true, orderId: order.id, embedded: checkout.embedded }
+      : { success: true, orderId: order.id, redirectUrl: checkout.redirectUrl },
     201,
   );
 }

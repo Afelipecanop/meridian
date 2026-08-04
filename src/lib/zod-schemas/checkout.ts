@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { EmbeddedCheckout } from "@/lib/payments/provider";
 
 /** Payload del formulario de pedido público (compartido cliente/servidor). */
 export const checkoutSchema = z.object({
@@ -31,5 +32,7 @@ export type CheckoutResponse =
       orderId: string;
       /** Presente en modo pasarela: URL a la que redirigir para pagar. */
       redirectUrl?: string;
+      /** Presente en modo pasarela con botón embebido (Bold). */
+      embedded?: EmbeddedCheckout;
     }
   | { success: false; error: string };

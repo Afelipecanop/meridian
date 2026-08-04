@@ -8,7 +8,7 @@ Cada landing es una página autónoma (`/:slug`) sin navegación de salida, pens
 
 ## Estado del proyecto
 
-**Todas las etapas de código completadas (0–7)** — la plataforma vende end-to-end con pago contra entrega y pago online. Para ponerla en vivo solo falta ejecutar el despliegue: [`docs/DEPLOY.md`](docs/DEPLOY.md). Lo que funciona:
+**Todas las etapas completadas (0–7) y la plataforma está desplegada en producción (Vercel + Neon)** — vende end-to-end con pago contra entrega y pago online. Quedan pendientes del checklist post-deploy: compra sandbox de Wompi, verificación del Blob store y QA en navegador ([`docs/DEPLOY.md`](docs/DEPLOY.md)). Lo que funciona:
 
 - 🔐 Login de admin con credenciales (Auth.js v5, sesión JWT) y protección de `/admin/*`
 - 🖥️ Panel de administración oscuro (estética tipo Linear) con sidebar responsive
@@ -25,7 +25,7 @@ Cada landing es una página autónoma (`/:slug`) sin navegación de salida, pens
 - 💳 Pago online por landing vía capa `PaymentProvider`: **Wompi** (checkout hosted + webhook verificado por firma) y proveedor `mock` para desarrollo; banner de resultado de pago en la landing *(pendiente: compra de prueba con llaves sandbox reales)*
 - 🚀 Listo para producción: `next/image` en secciones, Vercel Blob para subidas, `robots.txt` + `sitemap.xml`, CSP y headers de seguridad, error boundary global
 
-**Siguiente paso:** desplegar siguiendo [`docs/DEPLOY.md`](docs/DEPLOY.md).
+**Siguiente paso:** cerrar el checklist post-deploy de [`docs/DEPLOY.md`](docs/DEPLOY.md) — en especial la compra de prueba en sandbox de Wompi (registrar antes la URL de eventos en su panel).
 
 ## Stack
 
