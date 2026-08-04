@@ -108,8 +108,8 @@ export const boldProvider: PaymentProvider = {
           // Modal en la misma página en lugar de navegar a Bold.
           "data-render-mode": "embedded",
           "data-customer-data": JSON.stringify({
-            fullName: order.customer.name,
-            phone: order.customer.phone,
+            fullName: `${order.customer.nombres} ${order.customer.apellidos}`,
+            phone: order.customer.telefono,
             ...(order.customer.email ? { email: order.customer.email } : {}),
           }),
         },

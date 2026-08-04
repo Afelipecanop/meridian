@@ -91,12 +91,15 @@ export function LandingSettingsPanel({
           id="ls-checkout"
           value={draft.checkoutMode}
           onChange={(e) =>
-            onChange({ checkoutMode: e.target.value as "cod" | "gateway" })
+            onChange({
+              checkoutMode: e.target.value as "cod" | "gateway" | "both",
+            })
           }
           className={selectClass}
         >
           <option value="cod">Contra entrega (COD)</option>
           <option value="gateway">Pago online (pasarela)</option>
+          <option value="both">Ambos (cliente elige)</option>
         </select>
       </div>
 

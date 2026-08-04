@@ -116,8 +116,11 @@ export const wompiProvider: PaymentProvider = {
     if (order.customer.email) {
       params.set("customer-data:email", order.customer.email);
     }
-    params.set("customer-data:full-name", order.customer.name);
-    params.set("customer-data:phone-number", order.customer.phone);
+    params.set(
+      "customer-data:full-name",
+      `${order.customer.nombres} ${order.customer.apellidos}`,
+    );
+    params.set("customer-data:phone-number", order.customer.telefono);
 
     return { ok: true, redirectUrl: `${CHECKOUT_URL}?${params.toString()}` };
   },

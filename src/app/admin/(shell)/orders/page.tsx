@@ -18,7 +18,9 @@ import {
   OrderStatusBadge,
   PaymentBadge,
   orderStatusLabels,
+  paymentStatusLabels,
   type OrderStatus,
+  type PaymentStatus,
 } from "@/components/admin/order-status";
 
 export const metadata: Metadata = { title: "Pedidos" };
@@ -51,6 +53,7 @@ export default async function OrdersPage({
 }: {
   searchParams: Promise<{
     status?: string;
+    pago?: string;
     landing?: string;
     fecha?: string;
     page?: string;
@@ -61,6 +64,10 @@ export default async function OrdersPage({
     params.status && params.status in orderStatusLabels
       ? (params.status as OrderStatus)
       : undefined;
+  const paymentStatusFilter =
+    params.pago && params.pago in paymentStatusLabels
+      ? (params.pago as PaymentStatus)
+      : undefined;
   const landingFilter = params.landing || undefined;
   const range: DateRange =
     params.fecha && params.fecha in dateRanges
@@ -70,6 +77,9 @@ export default async function OrdersPage({
 
   const conditions: SQL[] = [];
   if (statusFilter) conditions.push(eq(orders.status, statusFilter));
+  if (paymentStatusFilter) {
+    conditions.push(eq(orders.paymentStatus, paymentStatusFilter));
+  }
   if (landingFilter) conditions.push(eq(orders.landingId, landingFilter));
   const start = rangeStart(range);
   if (start) conditions.push(gte(orders.createdAt, start));
@@ -101,6 +111,7 @@ export default async function OrdersPage({
   function pageHref(page: number) {
     const query = new URLSearchParams();
     if (statusFilter) query.set("status", statusFilter);
+    if (paymentStatusFilter) query.set("pago", paymentStatusFilter);
     if (landingFilter) query.set("landing", landingFilter);
     if (range !== "todo") query.set("fecha", range);
     if (page > 1) query.set("page", String(page));
@@ -114,7 +125,7 @@ export default async function OrdersPage({
         <h1 className="text-2xl font-semibold tracking-tight">Pedidos</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {total} {total === 1 ? "pedido" : "pedidos"}
-          {statusFilter || landingFilter || range !== "todo"
+          {statusFilter || paymentStatusFilter || landingFilter || range !== "todo"
             ? " con estos filtros"
             : " en total"}
         </p>
@@ -129,6 +140,19 @@ export default async function OrdersPage({
         >
           <option value="">Todos los estados</option>
           {Object.entries(orderStatusLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          name="pago"
+          defaultValue={paymentStatusFilter ?? ""}
+          aria-label="Filtrar por estado de pago"
+          className={selectClass}
+        >
+          <option value="">Todos los pagos</option>
+          {Object.entries(paymentStatusLabels).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
@@ -210,9 +234,11 @@ export default async function OrdersPage({
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium">{order.customer.name}</p>
+                    <p className="font-medium">
+                      {order.customer.nombres} {order.customer.apellidos}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {order.customer.phone}
+                      {order.customer.telefono}
                     </p>
                   </TableCell>
                   <TableCell className="text-muted-foreground">

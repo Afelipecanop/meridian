@@ -73,6 +73,7 @@ export async function POST(
     orderId: order.id,
     type: "payment",
     data: {
+      source: "webhook",
       provider: provider.name,
       status: result.providerStatus,
       paymentStatus: result.paymentStatus,

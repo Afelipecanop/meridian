@@ -25,14 +25,21 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   OrderStatusBadge,
-  PaymentBadge,
   orderStatusLabels,
   type OrderStatus,
 } from "@/components/admin/order-status";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
+import { PaymentStatusControl } from "@/components/admin/payment-status-control";
 import { OrderNoteForm } from "@/components/admin/order-note-form";
 
 export const metadata: Metadata = { title: "Detalle de pedido" };
+
+/** "checkout"/"webhook"/"admin": quién disparó el evento de pago. */
+function paymentSourceLabel(source: unknown): string {
+  if (source === "webhook") return "webhook";
+  if (source === "admin") return "admin";
+  return "checkout";
+}
 
 function describeEvent(event: {
   type: string;
@@ -42,12 +49,18 @@ function describeEvent(event: {
   if (event.type === "status_changed") {
     const from = orderStatusLabels[event.data.from as OrderStatus] ?? "?";
     const to = orderStatusLabels[event.data.to as OrderStatus] ?? "?";
-    return `Estado: ${from} → ${to}`;
+    return `Estado del pedido: ${from} → ${to} · fuente: admin`;
   }
   if (event.type === "note") return String(event.data.text ?? "");
   if (event.type === "payment") {
     const provider = String(event.data.provider ?? "pasarela");
-    if (event.data.error) return `Pago (${provider}): error al iniciar`;
+    const source = paymentSourceLabel(event.data.source);
+    if (event.data.error) {
+      return `Pago (${provider}): error al iniciar · fuente: ${source}`;
+    }
+    if (source === "admin") {
+      return `Pago marcado como pagado manualmente · fuente: admin`;
+    }
     const status = String(event.data.status ?? "");
     const normalized =
       event.data.paymentStatus === "paid"
@@ -55,9 +68,29 @@ function describeEvent(event: {
         : event.data.paymentStatus === "failed"
           ? "Fallido"
           : "Pendiente";
-    return `Pago (${provider}): ${status} → ${normalized}`;
+    return `Pago (${provider}): ${status} → ${normalized} · fuente: ${source}`;
   }
   return event.type;
+}
+
+function eventIcon(type: string) {
+  if (type === "note") {
+    return (
+      <MessageSquare
+        className="mt-0.5 h-4 w-4 shrink-0 text-amber-400"
+        aria-hidden
+      />
+    );
+  }
+  if (type === "payment") {
+    return (
+      <Banknote
+        className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400"
+        aria-hidden
+      />
+    );
+  }
+  return <CircleDot className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />;
 }
 
 export default async function OrderDetailPage({
@@ -169,7 +202,8 @@ export default async function OrderDetailPage({
                     ? "Pago contra entrega"
                     : "Pago online"}
                 </span>
-                <PaymentBadge
+                <PaymentStatusControl
+                  orderId={order.id}
                   method={order.paymentMethod}
                   status={order.paymentStatus}
                 />
@@ -187,24 +221,14 @@ export default async function OrderDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <RefreshCw className="h-4 w-4 text-primary" aria-hidden />
-                Historial
+                Línea de tiempo
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <ul className="flex flex-col gap-3">
                 {events.map((event) => (
                   <li key={event.id} className="flex gap-3 text-sm">
-                    {event.type === "note" ? (
-                      <MessageSquare
-                        className="mt-0.5 h-4 w-4 shrink-0 text-amber-400"
-                        aria-hidden
-                      />
-                    ) : (
-                      <CircleDot
-                        className="mt-0.5 h-4 w-4 shrink-0 text-primary"
-                        aria-hidden
-                      />
-                    )}
+                    {eventIcon(event.type)}
                     <div className="min-w-0 flex-1">
                       <p className="break-words">{describeEvent(event)}</p>
                       <p className="text-xs text-muted-foreground">
@@ -228,11 +252,16 @@ export default async function OrderDetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 text-sm">
-            <p className="font-medium">{order.customer.name}</p>
+            <p className="font-medium">
+              {order.customer.nombres} {order.customer.apellidos}
+            </p>
             <p className="flex items-center gap-2 text-muted-foreground">
               <Phone className="h-3.5 w-3.5" aria-hidden />
-              <a href={`tel:${order.customer.phone}`} className="hover:underline">
-                {order.customer.phone}
+              <a
+                href={`tel:${order.customer.telefono}`}
+                className="hover:underline"
+              >
+                {order.customer.telefono}
               </a>
             </p>
             {order.customer.email ? (
@@ -242,18 +271,18 @@ export default async function OrderDetailPage({
             <p className="flex items-start gap-2 text-muted-foreground">
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>
-                {order.customer.address}
-                {order.customer.city ? `, ${order.customer.city}` : ""}
+                {order.customer.direccion}, {order.customer.ciudad},{" "}
+                {order.customer.departamento}
               </span>
             </p>
-            {order.customer.notes ? (
+            {order.customer.notas ? (
               <>
                 <Separator />
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Notas del cliente
                   </p>
-                  <p className="mt-1">{order.customer.notes}</p>
+                  <p className="mt-1">{order.customer.notas}</p>
                 </div>
               </>
             ) : null}

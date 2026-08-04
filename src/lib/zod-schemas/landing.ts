@@ -46,7 +46,7 @@ export const landingDraftSchema = z.object({
     .max(60)
     .regex(SLUG_PATTERN, "El slug solo puede tener minúsculas, números y guiones"),
   productId: z.uuid().nullable(),
-  checkoutMode: z.enum(["cod", "gateway"]),
+  checkoutMode: z.enum(["cod", "gateway", "both"]),
   theme: landingThemeSchema,
   seo: landingSeoSchema,
   pixels: landingPixelsSchema,

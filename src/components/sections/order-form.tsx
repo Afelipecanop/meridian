@@ -1,23 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Minus, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { COLOMBIA_DEPARTMENTS, citiesForDepartment } from "@/lib/colombia-geo";
+import {
+  COUNTRIES,
+  DEFAULT_COUNTRY_CODE,
+  countryFlagEmoji,
+} from "@/lib/countries";
 import type { EmbeddedCheckout } from "@/lib/payments/provider";
 import type { OrderFormSettings } from "@/lib/zod-schemas/sections";
-import type { CheckoutResponse } from "@/lib/zod-schemas/checkout";
+import { checkoutSchema, type CheckoutResponse } from "@/lib/zod-schemas/checkout";
 import { BoldButton } from "./bold-button";
 import type { SectionProps } from "./types";
 
 const inputClass =
   "w-full rounded-lg border border-(--lp-text)/15 bg-transparent px-3.5 py-2.5 text-sm outline-none transition placeholder:text-(--lp-text)/40 focus:border-(--lp-primary) focus:ring-2 focus:ring-(--lp-primary)/20";
 
+type FieldErrors = Partial<Record<string, string>>;
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="mt-1 text-xs text-red-500">
+      {message}
+    </p>
+  );
+}
+
+const paymentChoiceOptions = [
+  { value: "cod", label: "Pago contra entrega" },
+  { value: "gateway", label: "Pago anticipado" },
+] as const;
+
 export function OrderFormSection({
   settings,
   landing,
   product,
 }: SectionProps<OrderFormSettings>) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState(DEFAULT_COUNTRY_CODE);
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [department, setDepartment] = useState("");
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [paymentChoice, setPaymentChoice] = useState<"cod" | "gateway">("cod");
+  const honeypotRef = useRef<HTMLInputElement>(null);
+
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [embedded, setEmbedded] = useState<EmbeddedCheckout | null>(null);
@@ -25,6 +60,34 @@ export function OrderFormSection({
 
   const unitPrice = product ? Number(product.price) : 0;
   const total = unitPrice * quantity;
+  const cities = useMemo(() => citiesForDepartment(department), [department]);
+  const showPaymentChoice = landing.checkoutMode === "both";
+  const effectivePaymentMethod =
+    landing.checkoutMode === "both" ? paymentChoice : landing.checkoutMode;
+
+  function clearError(key: string) {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function resetForm() {
+    setFirstName("");
+    setLastName("");
+    setPhoneCountry(DEFAULT_COUNTRY_CODE);
+    setPhone("");
+    setEmail("");
+    setDepartment("");
+    setCity("");
+    setAddress("");
+    setNotes("");
+    setQuantity(1);
+    setPaymentChoice("cod");
+    setFieldErrors({});
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,23 +101,39 @@ export function OrderFormSection({
       return;
     }
 
-    const form = new FormData(event.currentTarget);
+    const validation = checkoutSchema.safeParse({
+      landingId: landing.id,
+      firstName,
+      lastName,
+      phoneCountry,
+      phone,
+      email,
+      department,
+      city,
+      address,
+      notes,
+      quantity,
+      ...(showPaymentChoice ? { paymentChoice } : {}),
+      website: honeypotRef.current?.value ?? "",
+    });
+
+    if (!validation.success) {
+      const nextErrors: FieldErrors = {};
+      for (const issue of validation.error.issues) {
+        const key = String(issue.path[0] ?? "");
+        if (key && !nextErrors[key]) nextErrors[key] = issue.message;
+      }
+      setFieldErrors(nextErrors);
+      return;
+    }
+    setFieldErrors({});
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          landingId: landing.id,
-          name: String(form.get("name") ?? ""),
-          phone: String(form.get("phone") ?? ""),
-          email: String(form.get("email") ?? ""),
-          address: String(form.get("address") ?? ""),
-          city: String(form.get("city") ?? ""),
-          notes: String(form.get("notes") ?? ""),
-          quantity,
-          website: String(form.get("website") ?? ""),
-        }),
+        body: JSON.stringify(validation.data),
       });
       const data = (await res.json()) as CheckoutResponse;
       if (data.success && data.redirectUrl) {
@@ -100,7 +179,7 @@ export function OrderFormSection({
                 type="button"
                 onClick={() => {
                   setSucceeded(false);
-                  setQuantity(1);
+                  resetForm();
                 }}
                 className="mt-2 text-sm text-(--lp-primary) underline underline-offset-4"
               >
@@ -142,57 +221,156 @@ export function OrderFormSection({
                 <input
                   type="text"
                   name="website"
+                  ref={honeypotRef}
                   tabIndex={-1}
                   autoComplete="off"
                   aria-hidden
                   className="absolute -left-[9999px] h-0 w-0 opacity-0"
                 />
 
-                <input
-                  name="name"
-                  required
-                  minLength={2}
-                  placeholder="Nombre completo"
-                  autoComplete="name"
-                  className={inputClass}
-                />
-                <input
-                  name="phone"
-                  required
-                  type="tel"
-                  minLength={7}
-                  placeholder="Teléfono / WhatsApp"
-                  autoComplete="tel"
-                  className={inputClass}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      value={firstName}
+                      onChange={(e) => {
+                        setFirstName(e.target.value);
+                        clearError("firstName");
+                      }}
+                      placeholder="Nombres"
+                      autoComplete="given-name"
+                      className={inputClass}
+                    />
+                    <FieldError message={fieldErrors.firstName} />
+                  </div>
+                  <div>
+                    <input
+                      value={lastName}
+                      onChange={(e) => {
+                        setLastName(e.target.value);
+                        clearError("lastName");
+                      }}
+                      placeholder="Apellidos"
+                      autoComplete="family-name"
+                      className={inputClass}
+                    />
+                    <FieldError message={fieldErrors.lastName} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex gap-2">
+                    <select
+                      value={phoneCountry}
+                      onChange={(e) => {
+                        setPhoneCountry(e.target.value);
+                        clearError("phoneCountry");
+                      }}
+                      aria-label="País del teléfono"
+                      className={`${inputClass} w-32 shrink-0`}
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {countryFlagEmoji(c.code)} {c.dialCode}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        clearError("phone");
+                      }}
+                      type="tel"
+                      placeholder="Teléfono / WhatsApp"
+                      autoComplete="tel-national"
+                      className={inputClass}
+                    />
+                  </div>
+                  <FieldError
+                    message={fieldErrors.phone ?? fieldErrors.phoneCountry}
+                  />
+                </div>
+
                 {settings.showEmail ? (
+                  <div>
+                    <input
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        clearError("email");
+                      }}
+                      type="email"
+                      placeholder="Correo (opcional)"
+                      autoComplete="email"
+                      className={inputClass}
+                    />
+                    <FieldError message={fieldErrors.email} />
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <select
+                      value={department}
+                      onChange={(e) => {
+                        setDepartment(e.target.value);
+                        setCity("");
+                        clearError("department");
+                      }}
+                      aria-label="Departamento"
+                      className={inputClass}
+                    >
+                      <option value="">Departamento</option>
+                      {COLOMBIA_DEPARTMENTS.map((d) => (
+                        <option key={d.name} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={fieldErrors.department} />
+                  </div>
+                  <div>
+                    <select
+                      value={city}
+                      onChange={(e) => {
+                        setCity(e.target.value);
+                        clearError("city");
+                      }}
+                      disabled={!department}
+                      aria-label="Ciudad"
+                      className={`${inputClass} disabled:opacity-50`}
+                    >
+                      <option value="">
+                        {department ? "Ciudad" : "Elige el departamento"}
+                      </option>
+                      {cities.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={fieldErrors.city} />
+                  </div>
+                </div>
+
+                <div>
                   <input
-                    name="email"
-                    type="email"
-                    placeholder="Correo (opcional)"
-                    autoComplete="email"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      clearError("address");
+                    }}
+                    placeholder="Dirección y complementos (apto, interior, barrio...)"
+                    autoComplete="street-address"
                     className={inputClass}
                   />
-                ) : null}
-                <input
-                  name="address"
-                  required
-                  minLength={5}
-                  placeholder="Dirección de entrega"
-                  autoComplete="street-address"
-                  className={inputClass}
-                />
-                <input
-                  name="city"
-                  required
-                  minLength={2}
-                  placeholder="Ciudad"
-                  autoComplete="address-level2"
-                  className={inputClass}
-                />
+                  <FieldError message={fieldErrors.address} />
+                </div>
+
                 {settings.showNotes ? (
                   <textarea
-                    name="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                     rows={3}
                     maxLength={500}
                     placeholder="Notas del pedido (opcional)"
@@ -225,6 +403,34 @@ export function OrderFormSection({
                   </div>
                 </div>
 
+                {showPaymentChoice ? (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-medium">Forma de pago</span>
+                    <div
+                      role="radiogroup"
+                      aria-label="Forma de pago"
+                      className="grid grid-cols-2 gap-2 rounded-lg border border-(--lp-text)/15 p-1"
+                    >
+                      {paymentChoiceOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={paymentChoice === option.value}
+                          onClick={() => setPaymentChoice(option.value)}
+                          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                            paymentChoice === option.value
+                              ? "bg-(--lp-primary) text-white"
+                              : "text-(--lp-text)/70 hover:bg-(--lp-text)/5"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 {product ? (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-(--lp-text)/70">Total a pagar</span>
@@ -243,7 +449,7 @@ export function OrderFormSection({
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   ) : null}
                   {submitting
-                    ? landing.checkoutMode === "gateway"
+                    ? effectivePaymentMethod === "gateway"
                       ? "Redirigiendo al pago..."
                       : "Enviando..."
                     : settings.buttonText}

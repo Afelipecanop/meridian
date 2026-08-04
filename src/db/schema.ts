@@ -39,12 +39,17 @@ export type LandingPixels = {
 };
 
 export type OrderCustomer = {
-  name: string;
-  phone: string;
+  nombres: string;
+  apellidos: string;
+  /** ISO 3166-1 alpha-2 del indicativo elegido (ver src/lib/countries.ts). */
+  pais: string;
+  /** Con indicativo incluido, ej. "+573001234567". */
+  telefono: string;
   email?: string;
-  address?: string;
-  city?: string;
-  notes?: string;
+  departamento: string;
+  ciudad: string;
+  direccion: string;
+  notas?: string;
 };
 
 // ---------- Enums ----------
@@ -55,7 +60,19 @@ export const landingStatusEnum = pgEnum("landing_status", [
   "archived",
 ]);
 
-export const checkoutModeEnum = pgEnum("checkout_mode", ["cod", "gateway"]);
+/** Método de pago real de un pedido: siempre uno de los dos, nunca "both". */
+export const paymentMethodEnum = pgEnum("checkout_mode", ["cod", "gateway"]);
+
+/**
+ * Modo de checkout que ofrece una landing. "both" deja que el comprador
+ * elija en el formulario de pedido entre contra entrega y pago anticipado
+ * (ver paymentMethodEnum, que es el que terminan usando los pedidos).
+ */
+export const landingCheckoutModeEnum = pgEnum("landing_checkout_mode", [
+  "cod",
+  "gateway",
+  "both",
+]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "na",
@@ -64,12 +81,20 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "failed",
 ]);
 
+/**
+ * Estado operativo/logístico del pedido (independiente de payment_status).
+ * "en_preparacion" = pedido confirmado, en alistamiento/empaque;
+ * "despachado" = ya salió con la transportadora (antes "enviado");
+ * "devuelto" = la transportadora lo regresó (no entregado o rechazado).
+ */
 export const orderStatusEnum = pgEnum("order_status", [
   "nuevo",
   "confirmado",
-  "enviado",
+  "en_preparacion",
+  "despachado",
   "entregado",
   "cancelado",
+  "devuelto",
 ]);
 
 // ---------- Tablas ----------
@@ -113,7 +138,7 @@ export const landings = pgTable("landings", {
   theme: jsonb("theme").$type<LandingTheme>().notNull().default({}),
   seo: jsonb("seo").$type<LandingSeo>().notNull().default({}),
   pixels: jsonb("pixels").$type<LandingPixels>().notNull().default({}),
-  checkoutMode: checkoutModeEnum("checkout_mode").notNull().default("cod"),
+  checkoutMode: landingCheckoutModeEnum("checkout_mode").notNull().default("cod"),
   sections: jsonb("sections").$type<LandingSection[]>().notNull().default([]),
   publishedSections: jsonb("published_sections")
     .$type<LandingSection[]>()
@@ -140,7 +165,7 @@ export const orders = pgTable("orders", {
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
   total: numeric("total", { precision: 12, scale: 2 }).notNull(),
-  paymentMethod: checkoutModeEnum("payment_method").notNull().default("cod"),
+  paymentMethod: paymentMethodEnum("payment_method").notNull().default("cod"),
   paymentStatus: paymentStatusEnum("payment_status").notNull().default("na"),
   paymentRef: text("payment_ref"),
   status: orderStatusEnum("status").notNull().default("nuevo"),

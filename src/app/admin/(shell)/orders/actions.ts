@@ -10,9 +10,11 @@ import { orderEvents, orders } from "@/db/schema";
 const statusSchema = z.enum([
   "nuevo",
   "confirmado",
-  "enviado",
+  "en_preparacion",
+  "despachado",
   "entregado",
   "cancelado",
+  "devuelto",
 ]);
 
 async function requireSession() {
@@ -50,6 +52,45 @@ export async function updateOrderStatus(
     orderId: id,
     type: "status_changed",
     data: { from: current.status, to: parsed.data },
+  });
+
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${id}`);
+  return { success: true };
+}
+
+/**
+ * Marca como pagado un pedido contra entrega cuando el repartidor confirma
+ * el cobro. Es la única forma de tocar payment_status por fuera del webhook
+ * de la pasarela, y por eso está limitada a paymentMethod="cod": los pedidos
+ * de pasarela solo cambian de estado de pago vía /api/webhooks/[provider].
+ */
+export async function markOrderPaid(id: string): Promise<OrderActionResult> {
+  await requireSession();
+
+  const [order] = await db
+    .select({ paymentMethod: orders.paymentMethod, paymentStatus: orders.paymentStatus })
+    .from(orders)
+    .where(eq(orders.id, id))
+    .limit(1);
+  if (!order) return { success: false, error: "Pedido no encontrado" };
+  if (order.paymentMethod !== "cod") {
+    return {
+      success: false,
+      error: "Solo se puede marcar manualmente el pago de pedidos contra entrega",
+    };
+  }
+  if (order.paymentStatus === "paid") return { success: true };
+
+  await db
+    .update(orders)
+    .set({ paymentStatus: "paid", updatedAt: new Date() })
+    .where(eq(orders.id, id));
+
+  await db.insert(orderEvents).values({
+    orderId: id,
+    type: "payment",
+    data: { source: "admin", from: order.paymentStatus, to: "paid" },
   });
 
   revalidatePath("/admin/orders");

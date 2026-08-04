@@ -2,12 +2,26 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { landings, orderEvents, orders, products } from "@/db/schema";
+import { dialCodeFor } from "@/lib/countries";
 import { getPaymentProvider } from "@/lib/payments/provider";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkoutSchema, type CheckoutResponse } from "@/lib/zod-schemas/checkout";
 
 function json(body: CheckoutResponse, status: number) {
   return NextResponse.json(body, { status });
+}
+
+/**
+ * Traduce el modo de checkout de la landing a un método de pago concreto.
+ * Con "cod"/"gateway" el servidor ignora lo que mande el cliente y usa el
+ * modo fijo de la landing; con "both" el comprador elige, y sin elección
+ * válida no hay pedido.
+ */
+function resolvePaymentMethod(
+  checkoutMode: "cod" | "gateway" | "both",
+  choice: "cod" | "gateway" | undefined,
+): "cod" | "gateway" | null {
+  return checkoutMode === "both" ? (choice ?? null) : checkoutMode;
 }
 
 export async function POST(request: NextRequest) {
@@ -61,9 +75,17 @@ export async function POST(request: NextRequest) {
       404,
     );
   }
-  const provider =
-    landing.checkoutMode === "gateway" ? getPaymentProvider() : null;
-  if (landing.checkoutMode === "gateway" && !provider) {
+
+  const paymentMethod = resolvePaymentMethod(
+    landing.checkoutMode,
+    data.paymentChoice,
+  );
+  if (!paymentMethod) {
+    return json({ success: false, error: "Selecciona una forma de pago" }, 400);
+  }
+
+  const provider = paymentMethod === "gateway" ? getPaymentProvider() : null;
+  if (paymentMethod === "gateway" && !provider) {
     return json(
       { success: false, error: "El pago online no está configurado" },
       503,
@@ -99,18 +121,21 @@ export async function POST(request: NextRequest) {
       landingId: landing.id,
       productId: product.id,
       customer: {
-        name: data.name,
-        phone: data.phone,
+        nombres: data.firstName,
+        apellidos: data.lastName,
+        pais: data.phoneCountry,
+        telefono: `${dialCodeFor(data.phoneCountry)}${data.phone.replace(/\D/g, "")}`,
         email: data.email || undefined,
-        address: data.address,
-        city: data.city,
-        notes: data.notes || undefined,
+        departamento: data.department,
+        ciudad: data.city,
+        direccion: data.address,
+        notas: data.notes || undefined,
       },
       quantity: data.quantity,
       unitPrice: unitPrice.toFixed(2),
       total: total.toFixed(2),
-      paymentMethod: landing.checkoutMode,
-      paymentStatus: landing.checkoutMode === "gateway" ? "pending" : "na",
+      paymentMethod,
+      paymentStatus: paymentMethod === "gateway" ? "pending" : "na",
       status: "nuevo",
     })
     .returning();
@@ -121,7 +146,7 @@ export async function POST(request: NextRequest) {
     data: { source: "landing", slug: landing.slug, ip },
   });
 
-  if (landing.checkoutMode === "cod") {
+  if (paymentMethod === "cod") {
     return json({ success: true, orderId: order.id }, 201);
   }
 
@@ -143,7 +168,7 @@ export async function POST(request: NextRequest) {
     await db.insert(orderEvents).values({
       orderId: order.id,
       type: "payment",
-      data: { provider: provider!.name, error: checkout.error },
+      data: { source: "checkout", provider: provider!.name, error: checkout.error },
     });
     return json(
       { success: false, error: "No pudimos iniciar el pago. Intenta de nuevo." },
@@ -154,7 +179,7 @@ export async function POST(request: NextRequest) {
   await db.insert(orderEvents).values({
     orderId: order.id,
     type: "payment",
-    data: { provider: provider!.name, status: "pending" },
+    data: { source: "checkout", provider: provider!.name, status: "pending" },
   });
 
   return json(

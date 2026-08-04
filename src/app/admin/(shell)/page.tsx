@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, desc, eq, gte, ne, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, notInArray, sum } from "drizzle-orm";
 import {
   ArrowRight,
   Banknote,
@@ -33,6 +33,11 @@ export default async function AdminDashboard() {
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  // Cancelados y devueltos no cuentan como venta real.
+  const excludedStatuses: (typeof orders.status.enumValues)[number][] = [
+    "cancelado",
+    "devuelto",
+  ];
 
   const [
     [{ total: totalProducts }],
@@ -54,7 +59,10 @@ export default async function AdminDashboard() {
       .select({ total: count(), revenue: sum(orders.total) })
       .from(orders)
       .where(
-        and(gte(orders.createdAt, todayStart), ne(orders.status, "cancelado")),
+        and(
+          gte(orders.createdAt, todayStart),
+          notInArray(orders.status, excludedStatuses),
+        ),
       ),
     db
       .select({ status: orders.status, total: count() })
@@ -70,7 +78,7 @@ export default async function AdminDashboard() {
       })
       .from(orders)
       .leftJoin(landings, eq(orders.landingId, landings.id))
-      .where(ne(orders.status, "cancelado"))
+      .where(notInArray(orders.status, excludedStatuses))
       .groupBy(orders.landingId, landings.name, landings.slug)
       .orderBy(desc(count()))
       .limit(5),

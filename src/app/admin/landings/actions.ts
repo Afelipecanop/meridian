@@ -94,7 +94,7 @@ export async function createLanding(
       },
       seo: {},
       pixels: {},
-      checkoutMode: "cod",
+      checkoutMode: "both",
       sections: templateSections(),
       publishedSections: [],
     })
