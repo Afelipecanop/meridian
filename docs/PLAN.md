@@ -24,6 +24,8 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 | 8 — Bold, checkout dual y operación de pedidos | ✅ Completada (post-lanzamiento) |
 | 9 — Rediseño de landing y corrección crítica del admin | ✅ Completada (post-lanzamiento) |
 | 10 — Imágenes de producto por URL y admin solo escritorio | ✅ Completada (post-lanzamiento) |
+| 11 — Rediseño de la pantalla "solo escritorio" y fix en el editor | ✅ Completada (post-lanzamiento) |
+| 12 — Variantes de producto | ✅ Completada (post-lanzamiento) |
 
 ---
 
@@ -63,7 +65,8 @@ Cada landing se guarda como un documento con una lista ordenada de secciones. Ca
 ```
 users            id, email, password_hash, name, created_at
 products         id, name, description, price, compare_at_price, sku,
-                 stock, images (json), active, created_at, updated_at
+                 stock, images (json), variants (json: [{ name, options[] }]),
+                 active, created_at, updated_at
 landings         id, slug (único), name, product_id → products,
                  status (draft|published), theme (json: colores, fuente),
                  seo (json: title, description, og_image),
@@ -75,6 +78,7 @@ landings         id, slug (único), name, product_id → products,
 orders           id, landing_id → landings, product_id → products,
                  customer (json: nombres, apellidos, pais, telefono, email,
                            departamento, ciudad, direccion, notas),
+                 selected_variants (json: { [nombreVariable]: opciónElegida }),
                  quantity, unit_price, total,
                  payment_method (cod|gateway) — nunca "both": eso solo aplica a la landing,
                  payment_status (na|pending|paid|failed),
@@ -276,6 +280,32 @@ src/
 **Criterio de éxito:** el formulario de productos permite agregar cualquier cantidad de imágenes por URL; entrar a cualquier ruta de `/admin/*` desde un viewport menor a 1024px muestra una página 404 en vez del panel.
 
 **✅ Completada (2026-08-05).** `tsc --noEmit` en verde tras el cambio. El endpoint `/api/upload` y `src/lib/storage.ts` (Vercel Blob) quedan sin llamadas activas desde la UI (no se eliminaron: no se reportaron como rotos ni se pidió quitarlos).
+
+### Etapa 11 — Rediseño de la pantalla "solo escritorio" y fix en el editor (post-lanzamiento)
+**Objetivo:** la pantalla que bloquea el admin en móvil reutilizaba literalmente el copy del 404 genérico ("Esta página no existe o ya no está publicada"), sin botón de vuelta al login ni mensaje específico de "esto es admin, usa un computador". Además, el mismo bloqueo no se aplicaba en el editor de landings: entrando en formato PC y achicando la ventana (o en tablet), el resto del admin sí mostraba el aviso pero el editor se veía roto sin protección.
+
+- [x] **Componente compartido** `src/components/empty-state-screen.tsx`: pantalla con el mismo lenguaje visual de login/home (gradiente `#0a0a0f→#020203`, glows animados, badge de icono, botón con glow), parametrizable por `eyebrow`/`title`/`description`/`icon`/`action` y con un mini-diagrama opcional (`showDeviceHint`) de "móvil bloqueado → computador permitido" (`Smartphone`+`Ban` → `Monitor`, de `lucide-react`).
+- [x] **`src/components/admin/desktop-only-notice.tsx`:** usa el componente compartido para el caso "admin solo en PC" — título "Este panel no está disponible en este dispositivo", descripción explicando el motivo, y botón **Volver al inicio de sesión** → `/login` (antes el bloqueo llevaba a `/`).
+- [x] **`src/app/not-found.tsx`** (404 real del sitio): mismo sistema visual pero con copy de página no encontrada y botón "Ir al inicio" — ya no comparte el mensaje genérico con el bloqueo del admin, son dos pantallas con propósito distinto aunque compartan componente base.
+- [x] **Bug corregido — editor sin bloqueo:** `src/app/admin/landings/[id]/editor/page.tsx` vive fuera del grupo de rutas `(shell)` (para no heredar el sidebar del admin), así que nunca heredaba el guard `lg:hidden`/`lg:block` de `src/app/admin/(shell)/layout.tsx`. Se le agregó el mismo bloque directamente en la página. `preview/page.tsx` se dejó **sin** el bloqueo a propósito: esa vista simula la landing tal como la ve el cliente final y debe verse en cualquier tamaño.
+- [x] **Verificación con navegador real:** capturas con Playwright a 390px (móvil) y 820px (tablet) confirmando el nuevo diseño en las tres pantallas (404 público, bloqueo de admin, bloqueo del editor); `tsc --noEmit` en verde.
+
+**Criterio de éxito:** el bloqueo de admin en móvil se ve como parte de la marca (no como un 404 reciclado), tiene forma de volver al login, y aparece igual en cualquier ruta de `/admin/*` incluyendo el editor de landings.
+
+**✅ Completada (2026-08-05).**
+
+### Etapa 12 — Variantes de producto (post-lanzamiento)
+**Objetivo:** permitir que un producto tenga variables (talla, color, sabor…) definidas desde el admin, y que el comprador las seleccione en el formulario de pedido — sin mostrar esa sección cuando el producto no tiene variantes definidas.
+
+- [x] **Esquema:** `products.variants` (jsonb, `{ name: string; options: string[] }[]`, default `[]`) y `orders.selectedVariants` (jsonb `Record<string, string>`, default `{}`) — no hay tabla de líneas de pedido, así que la selección vive directamente en el pedido. Migración `0004_certain_captain_universe.sql`, generada con `db:generate` y aplicada con `db:migrate`.
+- [x] **Admin — formulario de producto** (`src/components/admin/product-form.tsx` + `src/app/admin/(shell)/products/actions.ts`): nueva tarjeta "Variantes" con el mismo patrón que ya usaba "Imágenes" (input + botón "Agregar" + hidden input JSON serializado para viajar por `FormData`). Se agrega un grupo con nombre (ej. "Talla") y opciones separadas por coma (ej. "S, M, L"); cada opción es un chip removible individualmente y cada grupo se puede eliminar completo. Server action valida con Zod (`z.array({ name, options: min(1) })`) y persiste en `createProduct`/`updateProduct`.
+- [x] **Checkout público** (`src/components/sections/order-form.tsx`, `src/lib/zod-schemas/checkout.ts`, `src/app/api/checkout/route.ts`): `OrderFormSection` renderiza un `<select>` por cada grupo de `product.variants`, justo antes del selector de cantidad, **solo si `product.variants.length > 0`** (mismo criterio que ya usaba `showPaymentChoice` para el selector de forma de pago). La selección es obligatoria: error por campo en cliente si falta alguna, y el servidor la vuelve a validar contra las opciones reales del producto (`/api/checkout` nunca confía en que el cliente mande un valor válido) antes de insertar el pedido con `selectedVariants`.
+- [x] **Admin — detalle de pedido:** la tarjeta "Resumen" muestra una fila "Variante" (ej. `Talla: M · Color: Negro`) solo cuando el pedido tiene selección; si no, la fila no aparece.
+- [x] **Verificación:** migración aplicada contra la base de datos real; `tsc --noEmit`/`eslint` en verde; QA visual con Playwright montando los componentes reales (`ProductForm`, `OrderFormSection`) con datos mock vía una ruta temporal (creada y eliminada en la misma sesión, nunca comiteada) — confirmado que agregar/quitar grupos y opciones funciona, que el checkout muestra los selects con un producto con variantes y los omite por completo con uno sin variantes, y que seleccionar una opción actualiza el estado correctamente.
+
+**Criterio de éxito:** un producto sin variantes no cambia en nada su formulario de pedido; un producto con variantes exige elegir cada una antes de poder enviar el pedido, y esa elección queda visible en el pedido dentro del admin.
+
+**✅ Completada (2026-08-05).** Nota de alcance: todas las variantes de un mismo producto comparten el precio (`product.price`); no hay soporte para que una opción específica (ej. una talla) cambie el precio — si se necesita a futuro, requiere resolver el precio en servidor contra `product.variants` en `/api/checkout`, igual que ya se hace con la disponibilidad.
 
 ---
 

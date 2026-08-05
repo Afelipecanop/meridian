@@ -112,7 +112,7 @@ flowchart LR
 
 - Login con credenciales (Auth.js, sesión JWT), acceso restringido a formato escritorio
 - Editor visual tipo Shopify: secciones reordenables (drag & drop), panel de ajustes, preview en vivo, autosave, borrador → publicar
-- CRUD de productos con imágenes por URL (carrete ilimitado) y CRUD de landings (duplicar, archivar, restaurar)
+- CRUD de productos con imágenes por URL (carrete ilimitado) y variantes opcionales (talla, color, sabor…), y CRUD de landings (duplicar, archivar, restaurar)
 - Módulo de pedidos: estado logístico y estado de pago **independientes**, línea de tiempo de eventos, notas internas
 - Dashboard con ventas del día, pedidos por estado y por landing
 - Pago online por landing vía capa `PaymentProvider` (Bold activo, Wompi como alternativa)
@@ -125,6 +125,8 @@ flowchart LR
 
 > Con la plataforma en producción, esta sección funciona como changelog: nuevas implementaciones y correcciones de bugs encontrados sobre la marcha.
 
+- **Variantes de producto:** los productos pueden tener variables opcionales (talla, color, sabor…), cada una con su lista de opciones, definidas desde una nueva tarjeta "Variantes" en el formulario de producto. Cuando un producto tiene variantes, el formulario de pedido de la landing muestra un selector obligatorio por cada una justo antes de la cantidad; si el producto no tiene ninguna, esa sección no aparece. La selección viaja validada (cliente y servidor) hasta el pedido y se ve en su detalle dentro del admin.
+- **Rediseño de la pantalla "solo escritorio" + fix en el editor:** la pantalla que bloquea `/admin/*` en móvil dejó de reciclar el copy del 404 genérico — ahora tiene diseño propio (mismo lenguaje visual que login/home), mensaje específico y un botón para volver al login. El mismo bloqueo, que ya existía en el resto del admin desde antes, se extendió al editor de landings (`/admin/landings/:id/editor`), que por vivir fuera del layout del panel nunca lo había heredado.
 - **Imágenes de producto solo por URL:** se quitó la subida de archivos del formulario de productos (`/api/upload` fallaba en producción sin `BLOB_READ_WRITE_TOKEN` configurado) y se reemplazó por un campo de URL + botón "Agregar" que arma un carrete sin límite de imágenes, con el mismo patrón que ya usaba el editor de secciones desde la Etapa 9.
 - **Admin bloqueado en celular:** entrar a `/admin/*` desde un móvil ahora muestra una página 404 en vez del panel — el acceso queda restringido a pantallas de proporción tipo escritorio (`≥1024px`). Implementado con un breakpoint CSS puro (mismo criterio que ya usaban sidebar/menú móvil), sin parpadeo de contenido ni dependencia de user-agent.
 - **Rediseño de la landing pública (Etapa 9):** nuevo sistema de diseño (Fraunces/Inter, scroll-reveal) y 6 tipos de sección nuevos, aplicado al motor de secciones existente sin romper el theming por landing.
@@ -155,12 +157,12 @@ src/
       layout.tsx              # Tipografía Fraunces/Inter de las landings (next/font, aislada del admin)
       public.css               # Animaciones de scroll-reveal (.lp-reveal, .lp-faq-a…)
       [slug]/                  # Landing pública (SSR/ISR + generateMetadata)
-    not-found.tsx            # 404 (landing no publicada, rutas inexistentes)
+    not-found.tsx            # 404 (landing no publicada, rutas inexistentes) — EmptyStateScreen
     login/                   # Login del admin
     admin/
       (shell)/               # Panel: dashboard, productos, pedidos, landings — solo escritorio (≥1024px)
-      landings/[id]/editor/  # Editor visual fullscreen
-      landings/[id]/preview/ # Render del borrador para el iframe del editor
+      landings/[id]/editor/  # Editor visual fullscreen — mismo guard "solo escritorio" que (shell)
+      landings/[id]/preview/ # Render del borrador para el iframe del editor (sin guard: simula la landing pública)
     api/
       auth/[...nextauth]/    # Endpoints de Auth.js
       checkout/              # Crea pedidos (COD y pasarela) + estado de pago
@@ -172,7 +174,8 @@ src/
       icons.ts                # Íconos compartidos (benefits/trust-bar/quality) + opciones del editor
       reveal.tsx              # Wrapper de scroll-reveal (IntersectionObserver)
     editor/                  # Editor visual (shell, lista dnd, panel de ajustes, preview)
-    admin/                   # Componentes del panel (productos con carrete de imágenes por URL)
+    admin/                   # Componentes del panel (productos con imágenes por URL + variantes, desktop-only-notice.tsx)
+    empty-state-screen.tsx   # Pantalla compartida (404 público y bloqueo "solo escritorio" del admin)
     ui/                      # shadcn/ui
   db/
     schema.ts                # Esquema Drizzle (users, products, landings, orders…)
@@ -279,7 +282,8 @@ La plataforma ya está lista para vender. El trabajo futuro no es un roadmap hac
 - **Next 16 usa `proxy.ts`** (no `middleware.ts`): la protección de `/admin/*` vive en `src/proxy.ts`.
 - **shadcn/ui se basa en Base UI** (no Radix): los componentes se componen con la prop `render`, no con `asChild`. `DropdownMenuItem` acepta `onSelect` como alias de `onClick` (`src/components/ui/dropdown-menu.tsx`) porque el `Menu.Item` real de Base UI no expone `onSelect` — replica el mismo alias si agregas un componente Base UI nuevo con selección por ítem.
 - **Imágenes:** tanto el editor de secciones como el formulario de productos usan **solo URL** (sin botón de subida) — pega el enlace directo de la imagen. `/api/upload` y `src/lib/storage.ts` (Vercel Blob) siguen en el repo pero sin llamadas activas desde la UI.
-- **Admin solo en escritorio:** `src/app/admin/(shell)/layout.tsx` renderiza una página 404 por debajo de `1024px` de ancho (breakpoint `lg` de Tailwind) y el panel real desde ahí en adelante.
+- **Admin solo en escritorio:** `src/app/admin/(shell)/layout.tsx` renderiza `DesktopOnlyNotice` (`src/components/admin/desktop-only-notice.tsx`) por debajo de `1024px` de ancho (breakpoint `lg` de Tailwind) y el panel real desde ahí en adelante. El editor de landings (`src/app/admin/landings/[id]/editor/page.tsx`) vive fuera del grupo `(shell)` y no hereda ese layout, así que repite el mismo guard `lg:hidden`/`lg:block` directamente en su propia página — si se agrega una ruta nueva bajo `/admin/landings/[id]/` (fuera de `(shell)`), replicar el mismo patrón ahí también. `preview/page.tsx` es la única excepción intencional: simula la landing pública y debe verse en cualquier tamaño.
+- **Variantes de producto:** `products.variants` (`{ name, options[] }[]`) es siempre opcional — si está vacío, el formulario de pedido no muestra ningún selector de variante. La validación de que la selección del comprador corresponde a una opción real ocurre en `/api/checkout` (nunca se confía en el cliente); no hay soporte para que una opción cambie el precio, todas comparten `product.price`.
 - **Precios** se guardan como `numeric(12,2)` en Postgres y se formatean con `Intl.NumberFormat` según `NEXT_PUBLIC_CURRENCY`/`NEXT_PUBLIC_LOCALE`.
 - La documentación de esta versión de Next está en `node_modules/next/dist/docs/` — consúltala antes de asumir APIs de versiones anteriores.
 
