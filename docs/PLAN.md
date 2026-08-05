@@ -5,8 +5,9 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 
 **Decisiones tomadas (2026-08-03):**
 - Stack: **Next.js (App Router) + TypeScript**, migrando desde la plantilla Vite actual.
-- Checkout: **dual** — cada landing elige entre contra entrega (COD) o pago online con pasarela.
+- Checkout: **dual** — cada landing puede ofrecer contra entrega (COD), pago online, o **ambos a la vez** dejando que el comprador elija en el formulario de pedido.
 - Infraestructura: **Vercel + Postgres gestionado** (Neon o Supabase, solo como BD).
+- Pasarela de pago activa en producción: **Bold** (Etapa 8). Wompi quedó implementado desde la Etapa 6 como alternativa dentro de la misma capa `PaymentProvider`, pero no es la que se usa en vivo.
 
 **Estado actual (última actualización: 2026-08-04):**
 
@@ -18,8 +19,9 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 | 3 — Secciones + landing pública | ✅ Completada |
 | 4 — Editor visual | ✅ Completada |
 | 5 — Checkout COD + pedidos | ✅ Completada |
-| 6 — Pasarela de pago | ✅ Completada (falta prueba con sandbox real de Wompi) |
+| 6 — Pasarela de pago (Wompi) | ✅ Completada (implementada como alternativa; no es la activa en producción) |
 | 7 — Producción | ✅ Completada — **desplegada en Vercel** (2026-08-04); checklist post-deploy en curso ([`DEPLOY.md`](DEPLOY.md)) |
+| 8 — Bold, checkout dual y operación de pedidos | ✅ Completada (post-lanzamiento) |
 
 ---
 
@@ -49,7 +51,7 @@ Cada landing se guarda como un documento con una lista ordenada de secciones. Ca
 - **Validación:** Zod (esquemas compartidos entre editor, API y render).
 - **Drag & drop del editor:** `@dnd-kit`.
 - **Imágenes:** Vercel Blob (o Supabase Storage) para subir imágenes de productos/secciones.
-- **Pagos:** capa `PaymentProvider` agnóstica; primera implementación con **Wompi o MercadoPago** (definir en Etapa 6), estructura lista para agregar Stripe.
+- **Pagos:** capa `PaymentProvider` agnóstica; **Bold** es el proveedor activo en producción (Etapa 8: botón embebido + webhook HMAC), **Wompi** quedó implementado como alternativa (Etapa 6, checkout hosted), estructura lista para agregar más.
 - **Sanitización HTML personalizado:** `sanitize-html` en servidor antes de guardar/renderizar.
 
 ---
@@ -63,26 +65,30 @@ products         id, name, description, price, compare_at_price, sku,
 landings         id, slug (único), name, product_id → products,
                  status (draft|published), theme (json: colores, fuente),
                  seo (json: title, description, og_image),
-                 checkout_mode (cod|gateway),
+                 checkout_mode (cod|gateway|both) — enum propio "landing_checkout_mode",
                  sections (json: [{ id, type, settings, visible }]),
                  published_sections (json)  ← copia al publicar (borrador vs publicado)
                  pixels (json: meta_pixel_id, tiktok_pixel_id, ga_id),
                  created_at, updated_at, published_at
 orders           id, landing_id → landings, product_id → products,
-                 customer (json: nombre, teléfono, email, dirección, ciudad, notas),
+                 customer (json: nombres, apellidos, pais, telefono, email,
+                           departamento, ciudad, direccion, notas),
                  quantity, unit_price, total,
-                 payment_method (cod|gateway),
-                 payment_status (pending|paid|failed|n/a),
-                 payment_ref (id transacción pasarela),
-                 status (nuevo|confirmado|enviado|entregado|cancelado),
+                 payment_method (cod|gateway) — nunca "both": eso solo aplica a la landing,
+                 payment_status (na|pending|paid|failed),
+                 payment_ref (id transacción pasarela; también sirve para idempotencia del webhook),
+                 status (nuevo|confirmado|en_preparacion|despachado|entregado|cancelado|devuelto),
                  created_at, updated_at
-order_events     id, order_id, type, data (json), created_at   ← historial de cambios
+order_events     id, order_id, type, data (json: incluye "source" en eventos de pago:
+                 checkout|webhook|admin), created_at   ← línea de tiempo del pedido
 assets           id, url, filename, size, created_at            ← imágenes subidas
 ```
 
 Notas:
 - `sections` (borrador) vs `published_sections` (lo que ve el público) permite editar sin romper la landing en vivo, con botón **Publicar** como en Shopify.
 - `customer` como JSON evita sobre-modelar; si luego se necesitan clientes recurrentes, se extrae a tabla propia.
+- `checkout_mode` (landing) y `payment_method` (pedido) son **dos enums distintos** a propósito: la landing puede ofrecer "both", pero un pedido concreto siempre termina siendo `cod` o `gateway`, nunca "both".
+- `status` (logística) y `payment_status` (dinero) son independientes: el estado del pedido siempre lo edita el admin; `payment_status` lo cambia el webhook de la pasarela (pedidos `gateway`) o el admin manualmente (solo pedidos `cod`, cuando el repartidor cobra).
 
 ---
 
@@ -224,6 +230,24 @@ src/
 **Criterio de éxito:** plataforma en producción con una landing real vendiendo.
 
 **✅ Completada (2026-08-04) — desplegada en producción.** Smoke test previo sobre build de producción local: headers CSP/nosniff/referrer/permissions presentes; `robots.txt` y `sitemap.xml` correctos (sitemap incluye `/botella-aurora`); la landing renderiza con `next/image` (`/_next/image` responde 200); admin, editor y checkout operativos bajo la CSP. El propietario ejecutó el despliegue en Vercel con las envs de producción (misma BD de Neon, migraciones ya aplicadas); el usuario admin de producción está creado y el admin de desarrollo por defecto fue eliminado. Queda el checklist post-deploy de `DEPLOY.md` (compra sandbox de Wompi, Blob, QA en navegador) para dar el criterio de éxito por cerrado con una landing vendiendo en vivo.
+
+### Etapa 8 — Bold, checkout dual y operación de pedidos (post-lanzamiento)
+**Objetivo:** con la plataforma ya en producción, poner en marcha la pasarela de pago real (Bold), enriquecer el formulario de pedido con datos reales de Colombia, permitir que una landing ofrezca contra entrega y pago online a la vez, y separar con claridad en el admin el estado del pedido (logística) del estado del pago (dinero).
+
+- [x] **Pasarela Bold** (`src/lib/payments/bold.ts`): botón de pagos embebido (`checkout.bold.co/library/boldPaymentButton.js`) con firma de integridad SHA-256(`orderId+monto+moneda+llaveSecreta`); webhook verificado con HMAC-SHA256 sobre el cuerpo crudo en Base64 (comparación en tiempo constante), normaliza `SALE_APPROVED`/`SALE_REJECTED` a `paid`/`failed` y los `VOID_*` a ignorado. Modo sandbox explícito (`BOLD_SANDBOX="true"`, porque Bold firma las pruebas con llave vacía) para no aceptar esa llave vacía por accidente en producción. Test de firmas contra los ejemplos oficiales de la documentación (`npm run test:bold`).
+- [x] **Idempotencia del webhook reforzada:** además de "pedido ya pagado no se revierte", ahora también se descarta cualquier evento cuyo `payment_id` ya quedó como `payment_ref` del pedido (webhooks duplicados o tardíos no reprocesan ni insertan eventos repetidos).
+- [x] **Formulario de pedido rediseñado** (`src/components/sections/order-form.tsx`): nombres y apellidos separados, teléfono con selector de país (bandera + indicativo, Colombia +57 por defecto — `src/lib/countries.ts`), departamento → ciudad dependientes con datos reales de Colombia (`src/lib/colombia-geo.ts`, 33 departamentos y ciudades principales), dirección con complementos, validación en línea campo a campo con el mismo esquema Zod del servidor.
+- [x] **`orders.customer` en español:** `nombres, apellidos, pais, telefono, departamento, ciudad, direccion, notas` (antes en inglés); sin migración de columna, sigue siendo `jsonb`.
+- [x] **Checkout dual real:** `landings.checkout_mode` ganó el valor `both` (migración `0002`, enum propio `landing_checkout_mode`, separado del `payment_method` de los pedidos que sigue siendo estrictamente `cod|gateway`). Con `both` el formulario muestra un selector "Pago contra entrega" / "Pago anticipado"; el servidor decide el método real y nunca confía en lo que mande el cliente cuando la landing no está en `both`.
+- [x] **Estado de pedido más operativo** (migración `0003`): `nuevo|confirmado|en_preparacion|despachado|entregado|cancelado|devuelto` (antes `enviado` en vez de `despachado`, sin `en_preparacion` ni `devuelto`). El dashboard excluye `cancelado` y `devuelto` de ventas e ingresos (antes solo excluía `cancelado`).
+- [x] **Estado de pedido vs. estado de pago separados en el admin:** el estado del pedido siempre es editable (select + diálogo de confirmación, historial en `order_events`); el estado de pago es de solo lectura cuando el método es pasarela (lo cambia únicamente el webhook) y editable solo para contra entrega vía botón "Marcar pagado" con confirmación — la única otra vía, además del webhook, para tocar `payment_status`, y bloqueada a nivel de servidor para pedidos de pasarela.
+- [x] **Línea de tiempo del pedido:** cada evento de pago incluye ahora su origen (`checkout`/`webhook`/`admin`) y se muestra en el historial cronológico junto con los cambios de estado.
+- [x] **Filtros de `/admin/orders`:** estado de pedido y estado de pago ahora se filtran por separado (antes solo existía el filtro de estado de pedido).
+- [x] **Incidente de producción resuelto:** tras el despliegue, cambiar el estado de un pedido fallaba en silencio porque las migraciones `0002`/`0003` no se habían corrido contra la base de datos de producción (Vercel despliega código, no migra la BD). Se endureció `updateOrderStatus`/`markOrderPaid` con manejo de errores explícito (el toast ahora muestra el error real de Postgres en vez de fallar sin explicación) y se documentó en `DEPLOY.md` que cada cambio de esquema requiere volver a correr `npm run db:migrate` contra producción.
+
+**Criterio de éxito:** una landing en modo "ambos" deja elegir la forma de pago; un pedido de pasarela se confirma solo vía webhook; un pedido COD se gestiona a mano de principio a fin (estado y pago); y el estado de cualquier pedido es siempre editable desde el admin en producción.
+
+**✅ Completada (2026-08-04).** Verificado con `tsc`/`eslint`/`next build` en verde tras cada cambio, más pruebas funcionales directas contra la base de datos real: webhook de Bold en sandbox (firma válida, reenvío duplicado y evento tardío contrario no revierten el pago), ciclo completo de un pedido COD (`nuevo→confirmado→en_preparación→despachado→entregado` + marcar pagado, con no-ops correctos al repetir), y validación de departamento/ciudad/forma de pago en `/api/checkout`. Probado también directamente en producción por el propietario, donde se detectó y corrigió el problema de migraciones pendientes descrito arriba.
 
 ---
 

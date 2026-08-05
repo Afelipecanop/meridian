@@ -45,22 +45,26 @@ export function CountdownSection({ settings }: SectionProps<CountdownSettings>) 
 
   return (
     <section className="px-6 py-10">
-      <div className="mx-auto max-w-3xl rounded-2xl bg-(--lp-primary) px-6 py-8 text-center text-white">
-        <p className="text-lg font-semibold">{settings.title}</p>
+      <div className="mx-auto max-w-2xl rounded-3xl bg-(--lp-text) px-6 py-9 text-center text-(--lp-bg) sm:px-10">
+        <p className="font-(family-name:--font-display) text-lg font-medium">
+          {settings.title}
+        </p>
         {remaining === null && settings.endsAt ? (
-          <p className="mt-3 text-2xl font-bold">{settings.expiredText}</p>
+          <p className="mt-3 font-(family-name:--font-display) text-2xl font-medium">
+            {settings.expiredText}
+          </p>
         ) : (
-          <div className="mt-4 flex justify-center gap-3 sm:gap-4">
+          <div className="mt-4 flex justify-center gap-3 sm:gap-3.5">
             {(units ?? ([["Días", 0], ["Horas", 0], ["Min", 0], ["Seg", 0]] as const)).map(
               ([label, value]) => (
                 <div
                   key={label}
-                  className="flex w-16 flex-col rounded-lg bg-white/15 py-2.5 sm:w-20 sm:py-3"
+                  className="flex w-16 flex-col rounded-xl bg-(--lp-bg)/10 py-2.5 sm:w-[72px] sm:py-3"
                 >
-                  <span className="text-2xl font-bold tabular-nums sm:text-3xl">
+                  <span className="font-(family-name:--font-display) text-2xl font-medium tabular-nums sm:text-[28px]">
                     {units ? String(value).padStart(2, "0") : "--"}
                   </span>
-                  <span className="text-xs uppercase tracking-wide opacity-80">
+                  <span className="text-[11px] tracking-wide text-(--lp-bg)/60 uppercase">
                     {label}
                   </span>
                 </div>

@@ -1,13 +1,13 @@
 # Informe de Proyecto — Meridian
 
 **Fecha:** 4 de agosto de 2026 (actualizado)
-**Estado general:** Etapas 0–7 completas y **la plataforma está desplegada en producción** (Vercel con variables de entorno configuradas + Neon; deploy ejecutado por el propietario). El usuario admin de producción está creado y el admin de desarrollo por defecto fue eliminado de la BD. Pendientes del checklist post-deploy: **compra sandbox de Wompi** (registrar la URL de eventos en su panel), verificación del Blob store y QA en navegador.
+**Estado general:** Etapas 0–8 completas y **la plataforma está desplegada en producción** (Vercel con variables de entorno configuradas + Neon; deploy ejecutado por el propietario). El usuario admin de producción está creado y el admin de desarrollo por defecto fue eliminado de la BD. La pasarela activa en producción es **Bold** (Etapa 8, post-lanzamiento); Wompi quedó implementada desde la Etapa 6 como alternativa dentro de la misma capa `PaymentProvider`. **Pendiente crítico:** confirmar que las migraciones `0002` y `0003` (checkout dual y nuevo estado de pedido) quedaron aplicadas en la base de datos de **producción** — se detectó en pruebas reales que este paso manual se había omitido tras el primer deploy, lo que impedía cambiar el estado de los pedidos. Pendientes menores del checklist post-deploy: compra sandbox de Wompi (si se decide usarla en el futuro), verificación del Blob store y QA en navegador.
 
 ---
 
 ## 1. Resumen ejecutivo
 
-Meridian es una plataforma de landing pages de producto único con editor visual tipo Shopify y panel de administración (productos, pedidos, landings). El proyecto partió de una plantilla vacía de Vite y en esta fase se migró a Next.js, se montó la base de datos en la nube con su esquema completo, se implementó la autenticación del panel y se avanzó en el shell del admin. Todo lo entregado está verificado con build, lint y pruebas end-to-end del login.
+Meridian es una plataforma de landing pages de producto único con editor visual tipo Shopify y panel de administración (productos, pedidos, landings). El proyecto partió de una plantilla vacía de Vite; se migró a Next.js, se montó la base de datos en la nube con su esquema completo, se implementó la autenticación del panel, el editor visual, el checkout (contra entrega y pasarela) y el módulo de pedidos, y se desplegó en producción (Vercel + Neon). La Etapa 8, post-lanzamiento, puso en marcha la pasarela real (Bold), amplió el formulario de pedido con datos de Colombia, habilitó que una landing ofrezca ambas formas de pago a la vez, y separó con claridad el estado del pedido del estado del pago en el admin. Todo lo entregado está verificado con build, lint y pruebas funcionales dirigidas contra la base de datos real.
 
 ## 2. Estado por etapas
 
@@ -19,8 +19,9 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 | 3 — Secciones + landing pública | Registro de secciones, `/:slug` con SSR/SEO | ✅ Completada y verificada |
 | 4 — Editor visual | Editor tipo Shopify con preview en vivo | ✅ Completada y verificada |
 | 5 — Checkout COD + pedidos | Formulario de pedido y gestión en admin | ✅ Completada y verificada |
-| 6 — Pasarela de pago | Capa PaymentProvider + Wompi + mock | ✅ Completada (sandbox real pendiente de llaves) |
+| 6 — Pasarela de pago | Capa PaymentProvider + Wompi + mock | ✅ Completada (implementada como alternativa; no es la activa en producción) |
 | 7 — Producción | Despliegue Vercel, seguridad, SEO técnico | ✅ Completada — **desplegada en Vercel**; checklist post-deploy en curso (`DEPLOY.md`) |
+| 8 — Bold, checkout dual y operación de pedidos | Pasarela Bold, formulario con datos de Colombia, checkout "ambos", estado de pedido/pago separados | ✅ Completada (post-lanzamiento) |
 
 ### Detalle de la Etapa 2
 
@@ -80,13 +81,26 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 - **Guía de despliegue** ([`DEPLOY.md`](DEPLOY.md)): Vercel paso a paso — envs de producción, Blob store, migraciones + seed con contraseña fuerte, URL de eventos de Wompi, dominio y checklist post-deploy. Documenta lo pospuesto: dominios personalizados por landing, notificaciones de pedido, rate-limit distribuido y analíticas propias.
 - Verificación (build de producción local): headers presentes en las respuestas, robots/sitemap correctos, `/_next/image` optimizando (200), y admin + editor + checkout operativos bajo la CSP.
 
+### Detalle de la Etapa 8 (post-lanzamiento)
+
+- **Pasarela Bold** (`src/lib/payments/bold.ts`): botón de pagos embebido (`checkout.bold.co/library/boldPaymentButton.js`) con firma de integridad SHA-256(`orderId+monto+moneda+llaveSecreta`, monto sin decimales a diferencia de Wompi); webhook verificado con HMAC-SHA256 sobre el cuerpo crudo **en Base64** con comparación en tiempo constante, normaliza `SALE_APPROVED`/`SALE_REJECTED` a `paid`/`failed` y `VOID_*` a ignorado (200 sin reprocesar). Modo sandbox explícito con `BOLD_SANDBOX="true"` (Bold firma las transacciones de prueba con llave secreta vacía; sin el flag siempre se usa la llave real, para no dejar los webhooks de producción forjables). Idempotencia por `payment_id`: un pedido ya pagado, o un evento cuyo `payment_id` ya quedó como `payment_ref`, no se reprocesa. Firmas verificadas con un test que reproduce los ejemplos oficiales de la documentación de Bold (`npm run test:bold`).
+- **Formulario de pedido rediseñado** (`src/components/sections/order-form.tsx`): nombres y apellidos como campos separados; teléfono con selector de país (bandera + indicativo, Colombia +57 por defecto, `src/lib/countries.ts` con 23 países); departamento → ciudad dependientes con datos reales de Colombia (`src/lib/colombia-geo.ts`, 33 departamentos con sus ciudades principales — no existía nada similar en el código); dirección con complementos; validación en línea campo a campo reusando el `checkoutSchema` de Zod compartido con el servidor (mensajes como "Ingrese un nombre válido" bajo cada input). `orders.customer` pasó a llaves en español (`nombres, apellidos, pais, telefono, departamento, ciudad, direccion, notas`) sin necesidad de migrar la columna (sigue siendo `jsonb`).
+- **Checkout dual real (`both`):** `landings.checkout_mode` ganó un tercer valor (migración `0002_organic_colonel_america.sql`), respaldado por un enum propio `landing_checkout_mode` separado del `payment_method` de los pedidos (que se mantiene estrictamente `cod|gateway`, nunca `both`, evitando que un valor sin sentido llegue a un pedido real). Con `both`, el formulario muestra un selector "Pago contra entrega" / "Pago anticipado"; `resolvePaymentMethod()` en `/api/checkout` decide el método real en servidor y **ignora** cualquier elección del cliente cuando la landing no está en `both` (defensa en profundidad).
+- **Estado de pedido más operativo** (migración `0003_jazzy_gateway.sql`): de `nuevo|confirmado|enviado|entregado|cancelado` a `nuevo|confirmado|en_preparacion|despachado|entregado|cancelado|devuelto`. La migración recrea el tipo enum (Postgres no permite quitar valores) y remapea los datos existentes de `enviado` a `despachado` en el mismo `USING` del `ALTER TABLE`, sin pérdida de información. El dashboard ahora excluye `cancelado` **y** `devuelto` de ventas e ingresos (antes solo `cancelado`).
+- **Estado de pedido vs. estado de pago, separados en el admin:** el estado del pedido (`OrderStatusSelect`) siempre es editable, ahora con un diálogo de confirmación antes de aplicar el cambio; cada cambio sigue quedando en `order_events` con `from`/`to`. El estado de pago (`PaymentStatusControl`, componente nuevo) es de **solo lectura** cuando el pedido es de pasarela — con una nota explícita en la UI de que lo actualiza el webhook — y **editable únicamente para contra entrega**, con un botón "Marcar pagado" y su propia confirmación; la acción de servidor `markOrderPaid` rechaza explícitamente cualquier pedido que no sea `cod`.
+- **Línea de tiempo del pedido:** la tarjeta "Historial" pasó a llamarse "Línea de tiempo"; todos los eventos de pago (creación del checkout, webhook, marcado manual) incluyen ahora un campo `source` (`checkout`/`webhook`/`admin`) que se muestra junto al evento, e íconos distintos según el tipo de evento.
+- **Filtros de `/admin/orders`:** nuevo selector de estado de pago, independiente del selector de estado de pedido que ya existía (cada uno con su propio parámetro de URL).
+- **Incidente de producción y su corrección:** tras el despliegue, el propietario reportó que no podía cambiar el estado de los pedidos. Diagnóstico: `docs/DEPLOY.md` documentaba correr `npm run db:migrate` solo para las migraciones `0000`+`0001`; las migraciones `0002`/`0003` de esta etapa nunca se corrieron contra la base de datos de **producción** (Vercel despliega código, no migra bases de datos), por lo que el enum `order_status` en producción seguía con los 5 valores viejos y cualquier intento de guardar un valor nuevo (`en_preparacion`, `despachado`, `devuelto`) era rechazado por Postgres. Como `updateOrderStatus`/`markOrderPaid` no capturaban ese error, la falla era silenciosa desde la UI. Se corrigió en dos frentes: (1) ambas acciones ahora envuelven la escritura en `try/catch` y devuelven el mensaje real de Postgres en el toast; (2) `DEPLOY.md` documenta explícitamente que cada migración nueva debe re-aplicarse contra producción a mano.
+- Verificación: `tsc --noEmit`, `eslint` y `next build` en verde tras cada cambio. Pruebas funcionales directas contra la base de datos real (sin poder automatizar la UI autenticada, ya que el único usuario es la cuenta real del propietario): webhook de Bold en sandbox con firma válida → `paid`; reenvío del mismo evento y un evento tardío contrario con el mismo `payment_id` → ambos no-op, sin revertir el pago; ciclo completo de un pedido COD (`nuevo→confirmado→en_preparación→despachado→entregado`, con repetición de un mismo estado como no-op) + `markOrderPaid` (`na→paid`, repetirlo también no-op); validaciones negativas de `/api/checkout` (forma de pago no elegida en modo `both`, departamento inválido). El propietario probó el flujo completo directamente en producción, donde surgió y se resolvió el incidente de migraciones descrito arriba.
+
 ## 2b. Métricas del código actual
 
 | Métrica | Valor |
 |---------|-------|
 | Rutas | 18 (6 públicas/auth + 8 admin + 5 API: auth, upload, checkout, checkout/status, webhooks/[provider]) |
-| Migraciones | `0000` (esquema) + `0001` (estado `archived`) |
-| Tablas en BD | 6 + 4 enums (migración `0000` aplicada) |
+| Migraciones | `0000` (esquema) + `0001` (estado `archived`) + `0002` (`landing_checkout_mode` con `both`) + `0003` (`order_status` con 7 valores) |
+| Tablas en BD | 6 + 5 enums |
+| Proveedores de pago | Bold (activo en producción), Wompi (alternativa), mock (desarrollo) |
 | Componentes shadcn/ui | 16 instalados |
 | Versiones clave | Next 16.3 · React 19.2 · Tailwind 4.3 · next-auth 5.0.0-beta.32 · Drizzle 0.45 |
 | Calidad | `npm run build` ✅ · `npm run lint` ✅ (0 warnings) |
@@ -95,7 +109,7 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 
 - **Hosting:** Vercel, con las variables de entorno de producción configuradas por el propietario (deploy ejecutado el 2026-08-04).
 - **Base de datos:** PostgreSQL en Neon (región `sa-east-1`), conectada vía Drizzle ORM. Es la misma instancia que usa Vercel en producción.
-- **Migraciones aplicadas:** `0000_organic_purifiers.sql` (esquema completo: `users`, `products`, `landings`, `orders`, `order_events`, `assets` + 4 enums) y `0001_yummy_guardian.sql` (estado `archived`).
+- **Migraciones aplicadas (en la base de desarrollo/dev usada para verificar):** `0000_organic_purifiers.sql` (esquema completo: `users`, `products`, `landings`, `orders`, `order_events`, `assets` + enums iniciales), `0001_yummy_guardian.sql` (estado `archived`), `0002_organic_colonel_america.sql` (`landing_checkout_mode` con `cod|gateway|both`) y `0003_jazzy_gateway.sql` (`order_status` con los 7 valores operativos). **Pendiente de confirmar que `0002` y `0003` también quedaron aplicadas en la base de datos de producción** — ver el incidente descrito en el detalle de la Etapa 8.
 - **Usuario admin de producción:** `canos184@gmail.com`, creado con `npm run db:seed` y contraseña propia. El admin de desarrollo por defecto (`admin@meridian.local` / `admin1234`) fue **eliminado** de la BD por seguridad; se puede recrear para uso local con `npm run db:seed`.
 
 ## 4. Decisiones técnicas tomadas
@@ -118,8 +132,9 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 
 | Punto | Impacto | Acción prevista |
 |-------|---------|-----------------|
+| **Migraciones de esquema no re-aplicadas a producción tras un deploy** | Ya causó una falla real (no se podía cambiar el estado de un pedido) | `DEPLOY.md` documenta ahora que cada migración nueva debe correrse a mano contra producción; las acciones afectadas ya muestran el error real de Postgres si vuelve a pasar, en vez de fallar en silencio |
 | next-auth en beta | Posibles breaking changes | Versión fijada en `package.json`; revisar changelog antes de actualizar |
-| Sandbox de Wompi sin probar | Cierre formal de Etapa 6 | Registrar `https://<dominio>/api/webhooks/wompi` en el panel de Wompi y hacer la compra de prueba |
+| Sandbox de Wompi sin probar | Sin impacto en producción (Bold es la pasarela activa); solo relevante si se decide usar Wompi | Registrar `https://<dominio>/api/webhooks/wompi` en el panel de Wompi y hacer la compra de prueba, si llega a necesitarse |
 | Dev y producción comparten la BD de Neon | Datos de prueba locales aparecen en producción | Crear un branch/BD separada de Neon para desarrollo cuando haya ventas reales |
 | Subidas de imágenes en producción | Rotas sin Blob | Verificar que el store de Vercel Blob está conectado (`BLOB_READ_WRITE_TOKEN`) |
 
@@ -127,11 +142,12 @@ Meridian es una plataforma de landing pages de producto único con editor visual
 
 ## 7. Próximos pasos
 
-1. Cerrar Etapa 6 con Wompi real: registrar la URL de eventos `https://<dominio>/api/webhooks/wompi` en el panel de Wompi y hacer la compra de prueba en sandbox.
-2. Completar el checklist post-deploy de [`DEPLOY.md`](DEPLOY.md): headers, subida de imagen a Blob, pedido COD de prueba en producción.
-3. QA manual en navegador: editor (drag & drop, autosave, publicar) y flujo de compra completo (COD y pasarela).
-4. Medir Lighthouse de la landing en producción y ajustar si baja de 85 en performance.
-5. Opcionales pospuestos: notificaciones de pedido, analíticas propias, dominios por landing.
+1. **Confirmar en producción** que `npm run db:migrate` aplicó `0002` y `0003` (verificar que se puede cambiar el estado de un pedido a `en_preparacion`/`despachado`/`devuelto` sin error).
+2. QA manual en navegador de lo nuevo de la Etapa 8: formulario con departamento/ciudad/país, selector de forma de pago en landings `both`, diálogo de confirmación al cambiar estado, botón "Marcar pagado" en pedidos COD.
+3. Completar el checklist post-deploy de [`DEPLOY.md`](DEPLOY.md): headers, subida de imagen a Blob.
+4. QA manual en navegador de lo ya reportado como completado: editor (drag & drop, autosave, publicar).
+5. Medir Lighthouse de la landing en producción y ajustar si baja de 85 en performance.
+6. Opcionales pospuestos: notificaciones de pedido, analíticas propias, dominios por landing, cierre formal de Wompi con sandbox real (si se decide usarla).
 
 ---
 

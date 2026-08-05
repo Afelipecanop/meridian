@@ -58,6 +58,9 @@ export default async function LandingPage({ params }: Props) {
 
   const { landing, product } = data;
   const theme = { ...themeDefaults, ...landing.theme };
+  const hasStickyCta = landing.publishedSections.some(
+    (s) => s.type === "sticky-cta" && s.visible,
+  );
 
   const style = {
     "--lp-primary": theme.primaryColor,
@@ -78,7 +81,11 @@ export default async function LandingPage({ params }: Props) {
         product={product}
       />
       {/* Sin navegación de salida: la landing solo cierra con una línea legal. */}
-      <footer className="px-6 py-8 text-center text-xs text-(--lp-text)/50">
+      <footer
+        className={`border-t border-(--lp-text)/10 px-6 py-8 text-center text-xs text-(--lp-text)/50 ${
+          hasStickyCta ? "pb-24 md:pb-8" : ""
+        }`}
+      >
         © {new Date().getFullYear()} {landing.name}. Todos los derechos
         reservados.
       </footer>

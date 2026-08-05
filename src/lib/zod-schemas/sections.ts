@@ -16,6 +16,10 @@ export const heroSchema = z.object({
   image: z.string().default(""),
   ctaText: z.string().default("Pedir ahora"),
   ctaHref: z.string().default("#pedido"),
+  /** Ej: "4.8". Vacío = no muestra estrellas. */
+  rating: z.string().default(""),
+  /** Ej: "+1.200 pedidos entregados". */
+  ratingCount: z.string().default(""),
 });
 
 export const benefitsSchema = z.object({
@@ -105,16 +109,130 @@ export const customHtmlSchema = z.object({
   html: z.string().default(""),
 });
 
+export const trustBarSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        icon: z.string().default("truck"),
+        text: z.string().default("Envío gratis"),
+      }),
+    )
+    .default([
+      { icon: "truck", text: "Envío gratis esta semana" },
+      { icon: "credit-card", text: "Pago contra entrega" },
+      { icon: "rotate-ccw", text: "Garantía de 30 días" },
+      { icon: "users", text: "Miles de clientes felices" },
+    ]),
+});
+
+export const stepsSchema = z.object({
+  eyebrow: z.string().default("El proceso"),
+  title: z.string().default("Cómo funciona"),
+  items: z
+    .array(
+      z.object({
+        title: z.string().default("Paso"),
+        description: z.string().default(""),
+      }),
+    )
+    .default([
+      {
+        title: "Pide en 1 minuto",
+        description: "Completa tus datos y elige forma de pago.",
+      },
+      {
+        title: "Confirmamos tu pedido",
+        description: "Validamos tu pedido y la dirección de envío.",
+      },
+      {
+        title: "Recibe y paga",
+        description: "Pagas en efectivo o transferencia al recibirla.",
+      },
+    ]),
+});
+
+export const comparisonSchema = z.object({
+  eyebrow: z.string().default("La diferencia"),
+  title: z.string().default("Por qué elegirnos"),
+  ourLabel: z.string().default("Nosotros"),
+  otherLabel: z.string().default("La competencia"),
+  rows: z
+    .array(
+      z.object({
+        feature: z.string().default("Característica"),
+        ours: z.string().default(""),
+        other: z.string().default(""),
+      }),
+    )
+    .default([
+      { feature: "Calidad de materiales", ours: "Premium", other: "Variable" },
+      { feature: "Garantía", ours: "30 días", other: "No suele incluir" },
+      { feature: "Envío", ours: "Gratis esta semana", other: "Con costo" },
+    ]),
+  note: z.string().default(""),
+});
+
+export const qualitySchema = z.object({
+  eyebrow: z.string().default("Hecha para durar"),
+  title: z.string().default("Calidad que puedes comprobar"),
+  items: z
+    .array(
+      z.object({
+        icon: z.string().default("shield"),
+        title: z.string().default("Control de calidad"),
+        description: z.string().default(""),
+      }),
+    )
+    .default([
+      {
+        icon: "badge-check",
+        title: "Pruebas de calidad",
+        description: "Cada unidad se revisa antes de salir de fábrica.",
+      },
+      {
+        icon: "gem",
+        title: "Materiales premium",
+        description: "Seleccionados por su durabilidad y acabado.",
+      },
+      {
+        icon: "rotate-ccw",
+        title: "Garantía real",
+        description: "Cambio o devolución si algo no sale bien.",
+      },
+    ]),
+});
+
+export const stickyCtaSchema = z.object({
+  /** Vacío = usa el nombre del producto. */
+  label: z.string().default(""),
+  ctaText: z.string().default("Pedir ahora"),
+  ctaHref: z.string().default("#pedido"),
+});
+
+export const toastSchema = z.object({
+  name: z.string().default("Alguien"),
+  location: z.string().default("tu ciudad"),
+  timeText: z.string().default("hace unos minutos"),
+  delaySeconds: z.number().min(0).default(4),
+  durationSeconds: z.number().min(1).default(6),
+});
+
 export const sectionSchemas = {
   hero: heroSchema,
+  "trust-bar": trustBarSchema,
   benefits: benefitsSchema,
+  steps: stepsSchema,
   gallery: gallerySchema,
+  comparison: comparisonSchema,
+  countdown: countdownSchema,
+  offer: offerSchema,
   testimonials: testimonialsSchema,
   faq: faqSchema,
-  offer: offerSchema,
-  countdown: countdownSchema,
   "order-form": orderFormSchema,
+  quality: qualitySchema,
   "custom-html": customHtmlSchema,
+  "sticky-cta": stickyCtaSchema,
+  toast: toastSchema,
 } as const;
 
 export type SectionType = keyof typeof sectionSchemas;
@@ -124,11 +242,17 @@ export type SectionSettings = {
 };
 
 export type HeroSettings = SectionSettings["hero"];
+export type TrustBarSettings = SectionSettings["trust-bar"];
 export type BenefitsSettings = SectionSettings["benefits"];
+export type StepsSettings = SectionSettings["steps"];
 export type GallerySettings = SectionSettings["gallery"];
+export type ComparisonSettings = SectionSettings["comparison"];
 export type TestimonialsSettings = SectionSettings["testimonials"];
 export type FaqSettings = SectionSettings["faq"];
 export type OfferSettings = SectionSettings["offer"];
 export type CountdownSettings = SectionSettings["countdown"];
 export type OrderFormSettings = SectionSettings["order-form"];
+export type QualitySettings = SectionSettings["quality"];
 export type CustomHtmlSettings = SectionSettings["custom-html"];
+export type StickyCtaSettings = SectionSettings["sticky-cta"];
+export type ToastSettings = SectionSettings["toast"];

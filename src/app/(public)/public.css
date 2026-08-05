@@ -1,0 +1,65 @@
+/* Animaciones de la landing pública — scroll-reveal y flotación decorativa.
+   Aisladas con prefijo lp- para no chocar con clases del panel de admin. */
+
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.lp-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lp-reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.lp-reveal-stagger.is-visible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+.lp-reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 0.03s; }
+.lp-reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 0.09s; }
+.lp-reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 0.15s; }
+.lp-reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 0.21s; }
+.lp-reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 0.27s; }
+.lp-reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 0.33s; }
+
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+.lp-float {
+  animation: lp-float 5s ease-in-out infinite;
+}
+
+@keyframes lp-toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lp-faq-a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+.lp-faq-a.is-open {
+  grid-template-rows: 1fr;
+}
+.lp-faq-a > div {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal,
+  .lp-reveal-stagger > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .lp-float {
+    animation: none !important;
+  }
+}

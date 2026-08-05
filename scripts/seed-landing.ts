@@ -77,20 +77,31 @@ async function main() {
 
   const sections: LandingSection[] = [
     section("hero", {
-      badge: "Nuevo · Envío gratis esta semana",
-      title: "Tu bebida perfecta, a la temperatura perfecta",
+      badge: "Nuevo · Botella Aurora",
+      title: "Tu bebida a la temperatura perfecta, todo el día",
       subtitle:
-        "La Botella Aurora mantiene el frío 24 horas y el calor 12. Acero inoxidable premium, cero derrames, cero BPA.",
+        "24 horas de frío, 12 de calor. Acero inoxidable premium, cero derrames, cero BPA — hecha para acompañarte desde el gimnasio hasta la oficina.",
       image: "/demo/aurora-1.svg",
       ctaText: "Pedir la mía",
+      rating: "4.8",
+      ratingCount: "+1.200 pedidos entregados",
+    }),
+    section("trust-bar", {
+      items: [
+        { icon: "truck", text: "Envío gratis esta semana" },
+        { icon: "credit-card", text: "Pago contra entrega" },
+        { icon: "rotate-ccw", text: "Garantía de 30 días" },
+        { icon: "users", text: "+1.200 clientes felices" },
+      ],
     }),
     section("benefits", {
-      title: "¿Por qué todos aman la Aurora?",
+      title: "Todo lo que esperas de una botella térmica, sin lo que sobra",
       items: [
         {
           icon: "clock",
-          title: "24 h de frío, 12 h de calor",
-          description: "Doble pared al vacío de grado alimenticio.",
+          title: "24 h de frío · 12 h de calor",
+          description:
+            "Doble pared al vacío de grado alimenticio: tu bebida se mantiene en su punto de la mañana a la noche, sin condensación por fuera.",
         },
         {
           icon: "shield",
@@ -119,7 +130,47 @@ async function main() {
         },
       ],
     }),
+    section("steps", {
+      eyebrow: "El proceso",
+      title: "Pedir por pago contra entrega, sin vueltas",
+      items: [
+        {
+          title: "Pide en 1 minuto",
+          description: "Completa tus datos y elige forma de pago.",
+        },
+        {
+          title: "Confirmamos por WhatsApp",
+          description: "Validamos tu pedido y la dirección de envío.",
+        },
+        {
+          title: "Recibe y paga",
+          description: "Pagas en efectivo o transferencia al recibirla.",
+        },
+      ],
+    }),
     section("gallery", { title: "Conócela de cerca" }),
+    section("comparison", {
+      eyebrow: "La diferencia",
+      title: "Aurora frente a una botella común",
+      ourLabel: "Aurora",
+      otherLabel: "Botella común",
+      rows: [
+        { feature: "Retención de frío", ours: "24 horas", other: "4–6 horas" },
+        { feature: "Retención de calor", ours: "12 horas", other: "2–3 horas" },
+        {
+          feature: "Sello antiderrames",
+          ours: "Silicona hermética",
+          other: "Tapa rosca simple",
+        },
+        {
+          feature: "Material",
+          ours: "Acero 18/8 sin BPA",
+          other: "Plástico o aluminio genérico",
+        },
+        { feature: "Garantía", ours: "30 días", other: "No suele incluir" },
+      ],
+      note: "*Cifras de referencia para esta demo — reemplázalas por datos verificados de tu producto y de la competencia real.",
+    }),
     section("countdown", {
       title: "El precio de lanzamiento termina en",
       endsAt: in7days.toISOString(),
@@ -132,6 +183,7 @@ async function main() {
       ctaText: "Aprovechar la oferta",
     }),
     section("testimonials", {
+      title: "+1.200 personas ya la tienen",
       items: [
         {
           name: "Laura G. — Bogotá",
@@ -179,8 +231,32 @@ async function main() {
         "Déjanos tus datos y te contactamos por WhatsApp para confirmar tu pedido.",
       showNotes: true,
     }),
-    section("custom-html", {
-      html: "<h2>Hecha para durar</h2><p>Cada Botella Aurora pasa por <strong>12 pruebas de calidad</strong> antes de salir de fábrica: hermeticidad, retención térmica, resistencia a caídas y acabado.</p><ul><li>Acero inoxidable 18/8 grado alimenticio</li><li>Pintura electrostática resistente a rayones</li><li>Boca ancha compatible con hielo</li></ul>",
+    section("quality", {
+      eyebrow: "Hecha para durar",
+      title: "Cada Aurora pasa 12 pruebas de calidad antes de salir de fábrica",
+      items: [
+        {
+          icon: "badge-check",
+          title: "12 pruebas de calidad",
+          description: "Hermeticidad, retención térmica, caídas y acabado.",
+        },
+        {
+          icon: "gem",
+          title: "Acero 18/8 grado alimenticio",
+          description: "Resistente a rayones, sin sabores extraños.",
+        },
+        {
+          icon: "package",
+          title: "Boca ancha",
+          description: "Compatible con hielo y fácil de lavar.",
+        },
+      ],
+    }),
+    section("sticky-cta", { ctaText: "Pedir ahora" }),
+    section("toast", {
+      name: "Andrés",
+      location: "Medellín",
+      timeText: "hace 4 min",
     }),
   ];
 

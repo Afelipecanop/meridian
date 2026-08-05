@@ -8,7 +8,7 @@ Cada landing es una página autónoma (`/:slug`) sin navegación de salida, pens
 
 ## Estado del proyecto
 
-**Todas las etapas completadas (0–7) y la plataforma está desplegada en producción (Vercel + Neon)** — vende end-to-end con pago contra entrega y pago online. Quedan pendientes del checklist post-deploy: compra sandbox de Wompi, verificación del Blob store y QA en navegador ([`docs/DEPLOY.md`](docs/DEPLOY.md)). Lo que funciona:
+**Todas las etapas completadas (0–8) y la plataforma está desplegada en producción (Vercel + Neon)** — vende end-to-end con pago contra entrega y pago online (Bold). Pendiente: confirmar que las migraciones `0002`/`0003` quedaron aplicadas en la base de datos de producción (ver "Siguiente paso" abajo) y el resto del checklist post-deploy ([`docs/DEPLOY.md`](docs/DEPLOY.md)). Lo que funciona:
 
 - 🔐 Login de admin con credenciales (Auth.js v5, sesión JWT) y protección de `/admin/*`
 - 🖥️ Panel de administración oscuro (estética tipo Linear) con sidebar responsive
@@ -19,13 +19,15 @@ Cada landing es una página autónoma (`/:slug`) sin navegación de salida, pens
 - 🌐 Landing pública en `/:slug`: SSR + ISR, tema por landing, SEO (`generateMetadata`, OG/Twitter/canonical), píxeles Meta/TikTok/GA y 404 propio — pruébala con `npm run db:seed:landing` → `/botella-aurora`
 - 🎨 Editor visual tipo Shopify (`/admin/landings/:id/editor`): secciones reordenables con drag & drop, panel de ajustes por sección, preview en vivo (escritorio/móvil), autosave y flujo borrador → **Publicar** con revalidación
 - 🗂️ CRUD de landings: crear desde plantilla, duplicar, archivar/restaurar, eliminar
-- 🛒 Checkout contra entrega: `POST /api/checkout` con validación Zod, rate-limit, honeypot anti-spam y precio calculado en servidor; mensaje de gracias configurable
-- 📋 Módulo de pedidos: lista con filtros (estado, landing, fecha), detalle con cambio de estado, historial (`order_events`) y notas internas
-- 📈 Dashboard con ventas de hoy, pedidos por estado y por landing
-- 💳 Pago online por landing vía capa `PaymentProvider`: **Wompi** (checkout hosted + webhook verificado por firma) y proveedor `mock` para desarrollo; banner de resultado de pago en la landing *(pendiente: compra de prueba con llaves sandbox reales)*
+- 🛒 Checkout **dual por landing** (`cod` / `gateway` / `both`): `POST /api/checkout` valida con Zod, rate-limit, honeypot anti-spam, precio calculado en servidor; en modo `both` el comprador elige la forma de pago en el propio formulario
+- 📝 Formulario de pedido con datos reales de Colombia: nombres/apellidos separados, teléfono con selector de país (bandera + indicativo, `src/lib/countries.ts`), departamento → ciudad dependientes (`src/lib/colombia-geo.ts`, 33 departamentos), validación en línea campo a campo
+- 📋 Módulo de pedidos: lista con filtros **independientes** de estado de pedido y estado de pago, detalle con línea de tiempo (`order_events`, con origen `checkout`/`webhook`/`admin`) y notas internas
+- 🔀 Estado de pedido vs. estado de pago separados: el estado del pedido siempre es editable (select + confirmación); el estado de pago es de solo lectura para pasarela (lo cambia el webhook) y editable a mano solo para contra entrega ("Marcar pagado")
+- 📈 Dashboard con ventas de hoy, pedidos por estado y por landing (excluye cancelados y devueltos)
+- 💳 Pago online por landing vía capa `PaymentProvider`: **Bold** (botón embebido, firma de integridad y webhook con HMAC verificado — proveedor activo en producción), **Wompi** (checkout hosted, implementado como alternativa) y `mock` para desarrollo; banner de resultado de pago en la landing
 - 🚀 Listo para producción: `next/image` en secciones, Vercel Blob para subidas, `robots.txt` + `sitemap.xml`, CSP y headers de seguridad, error boundary global
 
-**Siguiente paso:** cerrar el checklist post-deploy de [`docs/DEPLOY.md`](docs/DEPLOY.md) — en especial la compra de prueba en sandbox de Wompi (registrar antes la URL de eventos en su panel).
+**Siguiente paso:** confirmar que las migraciones `0002` (`landing_checkout_mode`) y `0003` (nuevo `order_status`) quedaron aplicadas en la base de datos de **producción** — Vercel despliega código, no migra la BD (ver [`docs/DEPLOY.md`](docs/DEPLOY.md)); luego cerrar el resto del checklist post-deploy.
 
 ## Stack
 
@@ -74,7 +76,9 @@ ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD=TuClave ADMIN_NAME="Tu Nombre" npm run 
 | `NEXT_PUBLIC_SITE_URL` | ✅ | URL pública del sitio |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | — | Credenciales que usa `db:seed` |
 | `NEXT_PUBLIC_CURRENCY` / `NEXT_PUBLIC_LOCALE` | — | Formato de precios (por defecto `COP` / `es-CO`) |
-| `PAYMENT_PROVIDER` | Para pago online | `wompi` (por defecto si hay llaves) o `mock` (solo dev) |
+| `PAYMENT_PROVIDER` | Para pago online | `bold`, `wompi` (por defecto si hay llaves de Wompi) o `mock` (solo dev) |
+| `BOLD_API_KEY` / `BOLD_SECRET_KEY` | Para Bold | Llaves del panel de Bold → Integraciones → Llaves de integración |
+| `BOLD_SANDBOX` | Solo pruebas con llaves de Bold de test | `"true"`: Bold firma esos webhooks con llave vacía; nunca en producción |
 | `WOMPI_PUBLIC_KEY` / `WOMPI_INTEGRITY_SECRET` / `WOMPI_EVENTS_SECRET` | Para Wompi | Llaves del panel de Wompi (sandbox: `pub_test_*`); registra `https://<dominio>/api/webhooks/wompi` como URL de eventos |
 
 ## Scripts
@@ -89,6 +93,7 @@ ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD=TuClave ADMIN_NAME="Tu Nombre" npm run 
 | `npm run db:push` | Empuja el esquema sin migraciones (solo prototipos) |
 | `npm run db:seed` | Crea/actualiza el usuario admin |
 | `npm run db:seed:landing` | Crea/actualiza la landing demo publicada (`/botella-aurora`) |
+| `npm run test:bold` | Verifica las firmas de Bold contra los ejemplos oficiales de su documentación |
 
 ## Estructura
 
@@ -119,10 +124,13 @@ src/
     migrations/
   lib/
     auth.ts, auth.config.ts  # Auth.js
-    payments/                # Capa PaymentProvider (wompi.ts, mock.ts)
+    payments/                # Capa PaymentProvider (bold.ts, wompi.ts, mock.ts)
     landings.ts              # Consulta de landing publicada (memoizada)
     sanitize.ts              # Sanitización del HTML personalizado (sanitize-html)
     zod-schemas/sections.ts  # Esquemas de settings por tipo de sección
+    zod-schemas/checkout.ts  # Esquema del formulario de pedido (compartido cliente/servidor)
+    colombia-geo.ts          # Departamentos/ciudades de Colombia (select dependiente)
+    countries.ts             # Países + indicativo telefónico (selector del formulario)
     storage.ts               # Almacenamiento de archivos (local en dev)
     format.ts                # Formato de moneda/fechas
   proxy.ts                   # Protección de /admin/* (Next 16)

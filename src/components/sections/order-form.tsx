@@ -16,7 +16,7 @@ import { BoldButton } from "./bold-button";
 import type { SectionProps } from "./types";
 
 const inputClass =
-  "w-full rounded-lg border border-(--lp-text)/15 bg-transparent px-3.5 py-2.5 text-sm outline-none transition placeholder:text-(--lp-text)/40 focus:border-(--lp-primary) focus:ring-2 focus:ring-(--lp-primary)/20";
+  "w-full rounded-xl border border-(--lp-text)/15 bg-transparent px-3.5 py-2.5 text-[14.5px] outline-none transition placeholder:text-(--lp-text)/40 focus:border-(--lp-primary) focus:ring-2 focus:ring-(--lp-primary)/20";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -160,16 +160,15 @@ export function OrderFormSection({
   }
 
   return (
-    <section id={settings.anchorId || "pedido"} className="px-6 py-14">
+    <section id={settings.anchorId || "pedido"} className="px-6 py-16 sm:py-20">
       <div className="mx-auto max-w-lg">
-        <div className="rounded-2xl border border-(--lp-text)/10 bg-(--lp-text)/2 p-6 sm:p-8">
+        <div className="rounded-3xl border border-(--lp-text)/10 bg-(--lp-bg) p-6 sm:p-8.5">
           {succeeded ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <CheckCircle2
-                className="h-12 w-12 text-(--lp-primary)"
-                aria-hidden
-              />
-              <h2 className="text-2xl font-bold tracking-tight text-balance">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-(--lp-primary)/10 text-(--lp-primary)">
+                <CheckCircle2 className="h-7 w-7" aria-hidden />
+              </span>
+              <h2 className="font-(family-name:--font-display) text-2xl font-medium tracking-tight text-balance">
                 {settings.successTitle}
               </h2>
               <p className="text-sm text-(--lp-text)/70">
@@ -188,7 +187,7 @@ export function OrderFormSection({
             </div>
           ) : embedded ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <h2 className="text-2xl font-bold tracking-tight text-balance">
+              <h2 className="font-(family-name:--font-display) text-2xl font-medium tracking-tight text-balance">
                 Pedido registrado
               </h2>
               <p className="text-sm text-(--lp-text)/70">
@@ -207,7 +206,7 @@ export function OrderFormSection({
             </div>
           ) : (
             <>
-              <h2 className="text-2xl font-bold tracking-tight text-balance">
+              <h2 className="font-(family-name:--font-display) text-2xl font-medium tracking-tight text-balance">
                 {settings.title}
               </h2>
               {settings.subtitle ? (
@@ -378,7 +377,7 @@ export function OrderFormSection({
                   />
                 ) : null}
 
-                <div className="flex items-center justify-between rounded-lg border border-(--lp-text)/10 px-4 py-3">
+                <div className="flex items-center justify-between rounded-xl border border-(--lp-text)/10 px-4 py-3">
                   <span className="text-sm font-medium">Cantidad</span>
                   <div className="flex items-center gap-3">
                     <button
@@ -409,7 +408,7 @@ export function OrderFormSection({
                     <div
                       role="radiogroup"
                       aria-label="Forma de pago"
-                      className="grid grid-cols-2 gap-2 rounded-lg border border-(--lp-text)/15 p-1"
+                      className="grid grid-cols-2 gap-2 rounded-xl border border-(--lp-text)/15 p-1"
                     >
                       {paymentChoiceOptions.map((option) => (
                         <button
@@ -432,9 +431,9 @@ export function OrderFormSection({
                 ) : null}
 
                 {product ? (
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between border-t border-(--lp-text)/10 pt-4 text-sm">
                     <span className="text-(--lp-text)/70">Total a pagar</span>
-                    <span className="text-xl font-bold text-(--lp-primary)">
+                    <span className="font-(family-name:--font-display) text-xl font-medium text-(--lp-primary)">
                       {formatCurrency(total)}
                     </span>
                   </div>
@@ -443,7 +442,7 @@ export function OrderFormSection({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center gap-2 rounded-full bg-(--lp-primary) px-8 py-3.5 font-semibold text-white shadow-lg transition hover:opacity-90 disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 rounded-full bg-(--lp-primary) px-8 py-3.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:opacity-90 disabled:opacity-60 disabled:hover:translate-y-0"
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

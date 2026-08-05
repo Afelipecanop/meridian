@@ -1,11 +1,17 @@
 import type { ComponentType } from "react";
 import {
+  Award,
   BadgePercent,
+  BellRing,
   Code2,
   HelpCircle,
   Images,
   ListChecks,
+  ListOrdered,
   MessageSquareQuote,
+  PanelBottom,
+  Scale,
+  ShieldCheck,
   ShoppingCart,
   Sparkles,
   Timer,
@@ -18,14 +24,20 @@ import {
 } from "@/lib/zod-schemas/sections";
 import type { SectionProps } from "./types";
 import { HeroSection } from "./hero";
+import { TrustBarSection } from "./trust-bar";
 import { BenefitsSection } from "./benefits";
+import { StepsSection } from "./steps";
 import { GallerySection } from "./gallery";
+import { ComparisonSection } from "./comparison";
 import { TestimonialsSection } from "./testimonials";
 import { FaqSection } from "./faq";
 import { OfferSection } from "./offer";
 import { CountdownSection } from "./countdown";
 import { OrderFormSection } from "./order-form";
+import { QualitySection } from "./quality";
 import { CustomHtmlSection } from "./custom-html";
+import { StickyCtaSection } from "./sticky-cta";
+import { ToastSection } from "./toast";
 
 export type { SectionType, SectionSettings };
 
@@ -127,6 +139,48 @@ export const sectionRegistry: {
     "Bloque libre de HTML (sanitizado)",
     Code2,
     CustomHtmlSection,
+  ),
+  "trust-bar": entry(
+    "trust-bar",
+    "Barra de confianza",
+    "Franja de íconos con garantías rápidas (envío, pago, devoluciones)",
+    ShieldCheck,
+    TrustBarSection,
+  ),
+  steps: entry(
+    "steps",
+    "Cómo funciona",
+    "Pasos numerados del proceso de compra",
+    ListOrdered,
+    StepsSection,
+  ),
+  comparison: entry(
+    "comparison",
+    "Tabla comparativa",
+    "Compara tu producto frente a la competencia",
+    Scale,
+    ComparisonSection,
+  ),
+  quality: entry(
+    "quality",
+    "Insignias de calidad",
+    "Cuadrícula centrada de sellos de calidad o confianza",
+    Award,
+    QualitySection,
+  ),
+  "sticky-cta": entry(
+    "sticky-cta",
+    "CTA fija (móvil)",
+    "Barra de compra fija al pie, visible solo en móvil",
+    PanelBottom,
+    StickyCtaSection,
+  ),
+  toast: entry(
+    "toast",
+    "Aviso de compra reciente",
+    "Notificación flotante de prueba social",
+    BellRing,
+    ToastSection,
   ),
 };
 

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { GallerySettings } from "@/lib/zod-schemas/sections";
+import { Reveal } from "./reveal";
 import type { SectionProps } from "./types";
 
 export function GallerySection({
@@ -11,15 +12,16 @@ export function GallerySection({
   if (images.length === 0) return null;
 
   return (
-    <section className="px-6 py-14">
+    <section className="px-6 py-16 sm:py-20">
       <div className="mx-auto max-w-5xl">
         {settings.title ? (
-          <h2 className="text-center text-3xl font-bold tracking-tight text-balance">
+          <h2 className="font-(family-name:--font-display) text-[28px] font-medium tracking-tight text-balance">
             {settings.title}
           </h2>
         ) : null}
-        <div
-          className={`mt-10 grid gap-4 ${
+        <Reveal
+          stagger
+          className={`mt-8 grid gap-3.5 ${
             images.length === 1
               ? "grid-cols-1"
               : images.length === 2
@@ -30,7 +32,7 @@ export function GallerySection({
           {images.map((src, i) => (
             <div
               key={i}
-              className="relative aspect-square overflow-hidden rounded-xl"
+              className="relative aspect-square overflow-hidden rounded-2xl border border-(--lp-text)/10"
             >
               <Image
                 src={src}
@@ -41,7 +43,7 @@ export function GallerySection({
               />
             </div>
           ))}
-        </div>
+        </Reveal>
       </div>
     </section>
   );

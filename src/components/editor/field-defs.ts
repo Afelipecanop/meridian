@@ -1,3 +1,4 @@
+import { sectionIconOptions } from "@/components/sections/icons";
 import type { SectionType } from "@/lib/zod-schemas/sections";
 
 /**
@@ -30,19 +31,7 @@ export type FieldDef =
       makeItem: () => Record<string, unknown>;
     };
 
-const iconOptions = [
-  { value: "check", label: "Check" },
-  { value: "clock", label: "Reloj" },
-  { value: "heart", label: "Corazón" },
-  { value: "leaf", label: "Hoja" },
-  { value: "package", label: "Paquete" },
-  { value: "shield", label: "Escudo" },
-  { value: "sparkles", label: "Destellos" },
-  { value: "star", label: "Estrella" },
-  { value: "thumbs-up", label: "Pulgar arriba" },
-  { value: "truck", label: "Camión" },
-  { value: "zap", label: "Rayo" },
-];
+const iconOptions = sectionIconOptions;
 
 export const sectionFields: Record<SectionType, FieldDef[]> = {
   hero: [
@@ -52,6 +41,13 @@ export const sectionFields: Record<SectionType, FieldDef[]> = {
     { kind: "image", key: "image", label: "Imagen (vacío = imagen del producto)" },
     { kind: "text", key: "ctaText", label: "Texto del botón" },
     { kind: "text", key: "ctaHref", label: "Destino del botón", placeholder: "#pedido" },
+    { kind: "text", key: "rating", label: "Calificación (opcional)", placeholder: "4.8" },
+    {
+      kind: "text",
+      key: "ratingCount",
+      label: "Texto de reseñas (opcional)",
+      placeholder: "+1.200 pedidos entregados",
+    },
   ],
   benefits: [
     { kind: "text", key: "title", label: "Título" },
@@ -131,6 +127,85 @@ export const sectionFields: Record<SectionType, FieldDef[]> = {
   ],
   "custom-html": [
     { kind: "code", key: "html", label: "HTML (se sanitiza en servidor: sin <script>)", rows: 14 },
+  ],
+  "trust-bar": [
+    {
+      kind: "items",
+      key: "items",
+      label: "Elementos",
+      itemLabelKey: "text",
+      addLabel: "Agregar elemento",
+      fields: [
+        { kind: "select", key: "icon", label: "Ícono", options: iconOptions },
+        { kind: "text", key: "text", label: "Texto" },
+      ],
+      makeItem: () => ({ icon: "check", text: "" }),
+    },
+  ],
+  steps: [
+    { kind: "text", key: "eyebrow", label: "Antetítulo" },
+    { kind: "text", key: "title", label: "Título" },
+    {
+      kind: "items",
+      key: "items",
+      label: "Pasos",
+      itemLabelKey: "title",
+      addLabel: "Agregar paso",
+      fields: [
+        { kind: "text", key: "title", label: "Título" },
+        { kind: "textarea", key: "description", label: "Descripción", rows: 2 },
+      ],
+      makeItem: () => ({ title: "Paso", description: "" }),
+    },
+  ],
+  comparison: [
+    { kind: "text", key: "eyebrow", label: "Antetítulo" },
+    { kind: "text", key: "title", label: "Título" },
+    { kind: "text", key: "ourLabel", label: "Columna propia" },
+    { kind: "text", key: "otherLabel", label: "Columna de comparación" },
+    {
+      kind: "items",
+      key: "rows",
+      label: "Filas",
+      itemLabelKey: "feature",
+      addLabel: "Agregar fila",
+      fields: [
+        { kind: "text", key: "feature", label: "Característica" },
+        { kind: "text", key: "ours", label: "Valor propio" },
+        { kind: "text", key: "other", label: "Valor de comparación" },
+      ],
+      makeItem: () => ({ feature: "Característica", ours: "", other: "" }),
+    },
+    { kind: "text", key: "note", label: "Nota al pie (opcional)" },
+  ],
+  quality: [
+    { kind: "text", key: "eyebrow", label: "Antetítulo" },
+    { kind: "text", key: "title", label: "Título" },
+    {
+      kind: "items",
+      key: "items",
+      label: "Insignias",
+      itemLabelKey: "title",
+      addLabel: "Agregar insignia",
+      fields: [
+        { kind: "select", key: "icon", label: "Ícono", options: iconOptions },
+        { kind: "text", key: "title", label: "Título" },
+        { kind: "textarea", key: "description", label: "Descripción", rows: 2 },
+      ],
+      makeItem: () => ({ icon: "shield", title: "Insignia", description: "" }),
+    },
+  ],
+  "sticky-cta": [
+    { kind: "text", key: "label", label: "Etiqueta (vacío = nombre del producto)" },
+    { kind: "text", key: "ctaText", label: "Texto del botón" },
+    { kind: "text", key: "ctaHref", label: "Destino del botón", placeholder: "#pedido" },
+  ],
+  toast: [
+    { kind: "text", key: "name", label: "Nombre" },
+    { kind: "text", key: "location", label: "Ubicación" },
+    { kind: "text", key: "timeText", label: "Texto de tiempo", placeholder: "hace 4 min" },
+    { kind: "number", key: "delaySeconds", label: "Retraso antes de aparecer (segundos)", min: 0 },
+    { kind: "number", key: "durationSeconds", label: "Duración visible (segundos)", min: 1 },
   ],
 };
 
