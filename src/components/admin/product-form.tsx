@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
@@ -50,8 +50,7 @@ export function ProductForm({
   const [state, formAction] = useActionState(action, undefined);
   const [active, setActive] = useState(product?.active ?? true);
   const [images, setImages] = useState<string[]>(product?.images ?? []);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageUrl, setImageUrl] = useState("");
 
   useEffect(() => {
     if (state?.success) {
@@ -62,25 +61,17 @@ export function ProductForm({
     }
   }, [state, product, router]);
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
-    setUploading(true);
+  function addImageUrl() {
+    const url = imageUrl.trim();
+    if (!url) return;
     try {
-      for (const file of Array.from(files)) {
-        const body = new FormData();
-        body.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body });
-        const data = (await res.json()) as { url?: string; error?: string };
-        if (!res.ok || !data.url) {
-          toast.error(data.error ?? `No se pudo subir ${file.name}`);
-          continue;
-        }
-        setImages((prev) => [...prev, data.url!]);
-      }
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      new URL(url);
+    } catch {
+      toast.error("Ingresa una URL de imagen válida");
+      return;
     }
+    setImages((prev) => [...prev, url]);
+    setImageUrl("");
   }
 
   return (
@@ -125,58 +116,58 @@ export function ProductForm({
               <CardTitle>Imágenes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                {images.map((url) => (
-                  <div
-                    key={url}
-                    className="group relative aspect-square overflow-hidden rounded-lg border border-border"
-                  >
-                    <Image
-                      src={url}
-                      alt="Imagen del producto"
-                      fill
-                      unoptimized
-                      className="object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setImages((prev) => prev.filter((i) => i !== url))
-                      }
-                      aria-label="Quitar imagen"
-                      className="absolute top-1.5 right-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-muted-foreground transition-colors duration-200 hover:border-primary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {uploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                  ) : (
-                    <ImagePlus className="h-5 w-5" aria-hidden />
-                  )}
-                  <span className="text-xs">
-                    {uploading ? "Subiendo..." : "Agregar"}
-                  </span>
-                </button>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addImageUrl();
+                    }
+                  }}
+                />
+                <Button type="button" variant="secondary" onClick={addImageUrl}>
+                  <ImagePlus className="h-4 w-4" aria-hidden />
+                  Agregar
+                </Button>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-                multiple
-                className="hidden"
-                onChange={(e) => handleFiles(e.target.files)}
-              />
-              <p className="mt-3 text-xs text-muted-foreground">
-                JPG, PNG, WebP, AVIF o GIF · máximo 5 MB por imagen
+              <p className="mt-2 text-xs text-muted-foreground">
+                Pega la URL de la imagen y presiona Agregar. Puedes agregar
+                tantas como quieras para formar el carrete del producto.
               </p>
+
+              {images.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                  {images.map((url, index) => (
+                    <div
+                      key={`${url}-${index}`}
+                      className="group relative aspect-square overflow-hidden rounded-lg border border-border"
+                    >
+                      <Image
+                        src={url}
+                        alt="Imagen del producto"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImages((prev) => prev.filter((_, i) => i !== index))
+                        }
+                        aria-label="Quitar imagen"
+                        className="absolute top-1.5 right-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

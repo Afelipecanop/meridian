@@ -23,7 +23,16 @@ export default async function AdminLayout({
 
   return (
     <div className="dark">
-      <div className="min-h-dvh bg-background text-foreground">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-6 text-center text-foreground lg:hidden">
+        <p className="text-sm font-medium text-muted-foreground">404</p>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Esta página no existe o ya no está publicada
+        </h1>
+        <Link href="/" className="mt-2 text-sm underline underline-offset-4">
+          Ir al inicio
+        </Link>
+      </div>
+      <div className="hidden min-h-dvh bg-background text-foreground lg:block">
         {/* Sidebar de escritorio */}
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-sidebar lg:flex">
           <div className="flex h-14 items-center border-b border-border px-5">

@@ -9,7 +9,7 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 - Infraestructura: **Vercel + Postgres gestionado** (Neon o Supabase, solo como BD).
 - Pasarela de pago activa en producción: **Bold** (Etapa 8). Wompi quedó implementado desde la Etapa 6 como alternativa dentro de la misma capa `PaymentProvider`, pero no es la que se usa en vivo.
 
-**Estado actual (última actualización: 2026-08-04):**
+**Estado actual (última actualización: 2026-08-05):**
 
 | Etapa | Estado |
 |-------|--------|
@@ -22,6 +22,8 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 | 6 — Pasarela de pago (Wompi) | ✅ Completada (implementada como alternativa; no es la activa en producción) |
 | 7 — Producción | ✅ Completada — **desplegada en Vercel** (2026-08-04); checklist post-deploy en curso ([`DEPLOY.md`](DEPLOY.md)) |
 | 8 — Bold, checkout dual y operación de pedidos | ✅ Completada (post-lanzamiento) |
+| 9 — Rediseño de landing y corrección crítica del admin | ✅ Completada (post-lanzamiento) |
+| 10 — Imágenes de producto por URL y admin solo escritorio | ✅ Completada (post-lanzamiento) |
 
 ---
 
@@ -248,6 +250,32 @@ src/
 **Criterio de éxito:** una landing en modo "ambos" deja elegir la forma de pago; un pedido de pasarela se confirma solo vía webhook; un pedido COD se gestiona a mano de principio a fin (estado y pago); y el estado de cualquier pedido es siempre editable desde el admin en producción.
 
 **✅ Completada (2026-08-04).** Verificado con `tsc`/`eslint`/`next build` en verde tras cada cambio, más pruebas funcionales directas contra la base de datos real: webhook de Bold en sandbox (firma válida, reenvío duplicado y evento tardío contrario no revierten el pago), ciclo completo de un pedido COD (`nuevo→confirmado→en_preparación→despachado→entregado` + marcar pagado, con no-ops correctos al repetir), y validación de departamento/ciudad/forma de pago en `/api/checkout`. Probado también directamente en producción por el propietario, donde se detectó y corrigió el problema de migraciones pendientes descrito arriba.
+
+### Etapa 9 — Rediseño de landing y corrección crítica del admin (post-lanzamiento)
+**Objetivo:** llevar la landing pública a un nuevo sistema de diseño a partir de un mockup de referencia del propietario, ampliar el catálogo de secciones para cubrirlo, y corregir bugs reportados en producción: el formulario de pedido, la carga de imágenes del editor y — el más grave — que "Eliminar" y "Agregar sección" no respondían en el panel de admin.
+
+- [x] **Sistema de diseño de las landings públicas:** tipografía Fraunces (títulos) + Inter (cuerpo) vía `next/font`, cargada solo en `src/app/(public)/layout.tsx` (no afecta al admin); animaciones de scroll-reveal (`public.css` + componente `Reveal` con `IntersectionObserver`) con soporte de `prefers-reduced-motion`. El color sigue viniendo del tema por landing (`--lp-primary/bg/text`) a propósito, para no romper el resto de tenants con una paleta fija.
+- [x] **6 tipos de sección nuevos** (de 9 a 15 en el registro), cada uno con esquema Zod + componente + entrada en `field-defs.ts` para ser editable desde el panel como cualquier otro: barra de confianza, cómo funciona (pasos numerados), tabla comparativa, insignias de calidad, CTA fija (móvil) y aviso de compra reciente.
+- [x] Restilo de las 8 secciones existentes con el mismo lenguaje visual (hero con calificación opcional, beneficios con tarjeta destacada + grid, FAQ con acordeón animado, countdown/oferta como tarjeta oscura reutilizando `--lp-text`/`--lp-bg`…), sin tocar la lógica de checkout del formulario de pedido. `seed-landing.ts` actualizado con el copy y orden del mockup de referencia.
+- [x] **Bug de layout en el formulario de pedido:** el selector de país (ancho fijo, `w-32`) y el campo de teléfono compartían una clase base con `w-full` en el mismo string de clases (sin `cn()`/tailwind-merge de por medio), así que competían por el ancho y el teléfono quedaba exprimido. Se separó el ancho de la clase base compartida.
+- [x] **Imágenes del editor de secciones, solo por URL:** se quitó el botón de subida y el uso de `/api/upload` de `ImageControl`/`ImagesControl` (sigue intacto para productos, que no se reportó como roto) — pega el enlace y listo.
+- [x] **Manejo de errores agregado donde faltaba:** eliminar/duplicar/archivar landing y producto, publicar/despublicar y autosave del editor no capturaban errores del server action — una falla (incluida una caída transitoria real de DNS hacia Neon, detectada durante las pruebas) quedaba completamente silenciosa. Ahora siempre hay un toast con el error real.
+- [x] **Corrección de raíz de un bug transversal en todo el admin:** `Menu.Item` de `@base-ui/react` (la librería real detrás de shadcn/ui en este proyecto) no tiene prop `onSelect` — a diferencia de Radix, cuya convención siguió el código al escribirse. TypeScript no marcaba error porque `onSelect` existe igual como el evento nativo de *selección de texto* de cualquier `<div>` (uno que un clic normal nunca dispara), así que el handler quedaba bien tipado pero jamás se ejecutaba. Esto dejaba sin funcionar, en todo el panel: Eliminar, Duplicar y Archivar (landings y productos), Cerrar sesión, Despublicar, y Agregar sección en el editor. Corregido **una sola vez** en el wrapper `src/components/ui/dropdown-menu.tsx` (alias `onSelect` → `onClick`), sin tocar cada uno de los 8 sitios de uso.
+- [x] **Verificación con navegador real:** se instaló Playwright de forma temporal (`npm install --no-save`, nunca quedó en `package.json`) para iniciar sesión con un usuario de prueba desechable y reproducir ambos bugs reportados end-to-end — capturas de pantalla, logs de consola y de red — antes del fix (el diálogo de "Eliminar" no aparecía; "Agregar sección" no cambiaba la lista) y después (fila eliminada de la tabla; conteo de secciones de 14 a 15, panel de ajustes seleccionando la nueva sección). Usuario y landing de prueba, y el paquete de Playwright, se eliminaron al terminar.
+
+**Criterio de éxito:** la landing pública adopta el nuevo sistema de diseño sin romper el checkout ni el theming por tenant; las acciones críticas del panel de admin (eliminar, duplicar, archivar, agregar sección, cerrar sesión, publicar/despublicar) responden de verdad a un clic, verificado con un navegador real y no solo por inspección de código.
+
+**✅ Completada (2026-08-05).** `tsc --noEmit`, `eslint` y build en verde tras cada cambio. Verificación funcional con Playwright contra un servidor de desarrollo real (dev server con caché de `.next` limpiada tras un crash previo de los workers de Turbopack): `/botella-aurora` sirve las 14 secciones publicadas con Fraunces/Inter compiladas en el CSS; en el admin, eliminar una landing de prueba la quita de la tabla y agregar una sección la suma a la lista y a la selección del panel — ambos casos fallaban antes del fix de `onSelect`/`onClick` y funcionan después, con cero errores de consola o de red en la corrida final.
+
+### Etapa 10 — Imágenes de producto por URL y admin solo escritorio (post-lanzamiento)
+**Objetivo:** dos bugs reportados por el propietario sobre el admin ya en producción: el formulario de productos no dejaba agregar imágenes, y el panel de admin era accesible (y visualmente roto) desde el celular.
+
+- [x] **Imágenes de producto solo por URL:** `ProductForm` (`src/components/admin/product-form.tsx`) dejó de llamar a `/api/upload` (fallaba en producción sin `BLOB_READ_WRITE_TOKEN`, filesystem de solo lectura en serverless) y pasó a un campo de URL + botón "Agregar" que valida con `new URL()` y suma la imagen a un carrete sin límite, con quitar por miniatura — mismo patrón que ya usaba el editor de secciones desde la Etapa 9.
+- [x] **Admin restringido a formato escritorio:** `src/app/admin/(shell)/layout.tsx` se dividió en dos bloques con el breakpoint `lg` (1024px) de Tailwind: por debajo se muestra una página 404 idéntica a la global (`src/app/not-found.tsx`); desde `lg` en adelante se muestra el panel real. Es CSS puro (mismo criterio que ya usaban sidebar/menú móvil), sin parpadeo de contenido ni dependencia de user-agent — cualquier proporción "tipo PC" (tablet en landscape, ventana grande) pasa igual.
+
+**Criterio de éxito:** el formulario de productos permite agregar cualquier cantidad de imágenes por URL; entrar a cualquier ruta de `/admin/*` desde un viewport menor a 1024px muestra una página 404 en vez del panel.
+
+**✅ Completada (2026-08-05).** `tsc --noEmit` en verde tras el cambio. El endpoint `/api/upload` y `src/lib/storage.ts` (Vercel Blob) quedan sin llamadas activas desde la UI (no se eliminaron: no se reportaron como rotos ni se pidió quitarlos).
 
 ---
 
