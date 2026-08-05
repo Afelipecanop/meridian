@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { landings, products } from "@/db/schema";
 import { Toaster } from "@/components/ui/sonner";
 import { EditorShell } from "@/components/editor/editor-shell";
+import { DesktopOnlyNotice } from "@/components/admin/desktop-only-notice";
 
 export const metadata: Metadata = { title: "Editor — Meridian" };
 
@@ -28,7 +29,10 @@ export default async function EditorPage({
 
   return (
     <div className="dark">
-      <div className="bg-background text-foreground">
+      <div className="lg:hidden">
+        <DesktopOnlyNotice />
+      </div>
+      <div className="hidden bg-background text-foreground lg:block">
         <EditorShell landing={landing} products={productRows} />
       </div>
       <Toaster theme="dark" position="bottom-right" />

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SidebarNav } from "@/components/admin/sidebar-nav";
 import { MobileNav } from "@/components/admin/mobile-nav";
 import { UserMenu } from "@/components/admin/user-menu";
+import { DesktopOnlyNotice } from "@/components/admin/desktop-only-notice";
 
 export const metadata: Metadata = {
   title: {
@@ -23,14 +24,8 @@ export default async function AdminLayout({
 
   return (
     <div className="dark">
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-6 text-center text-foreground lg:hidden">
-        <p className="text-sm font-medium text-muted-foreground">404</p>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Esta página no existe o ya no está publicada
-        </h1>
-        <Link href="/" className="mt-2 text-sm underline underline-offset-4">
-          Ir al inicio
-        </Link>
+      <div className="lg:hidden">
+        <DesktopOnlyNotice />
       </div>
       <div className="hidden min-h-dvh bg-background text-foreground lg:block">
         {/* Sidebar de escritorio */}
