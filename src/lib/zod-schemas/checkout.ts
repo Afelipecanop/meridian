@@ -29,6 +29,13 @@ export const checkoutSchema = z
     notes: z.string().trim().max(500).optional(),
     quantity: z.number().int().min(1).max(99),
     /**
+     * Selección del comprador por cada variable del producto (talla, color,
+     * sabor...), indexada por nombre de la variable. Solo se valida contra
+     * las variables reales del producto en el servidor (ver api/checkout),
+     * porque este schema no tiene acceso a la base de datos.
+     */
+    variants: z.record(z.string(), z.string()).default({}),
+    /**
      * Solo obligatorio cuando la landing tiene checkoutMode="both": cuál de
      * las dos formas de pago eligió el comprador. Para "cod"/"gateway" el
      * servidor ignora este campo y usa el modo fijo de la landing.

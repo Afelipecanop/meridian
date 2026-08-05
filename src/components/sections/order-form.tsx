@@ -53,6 +53,9 @@ export function OrderFormSection({
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariants, setSelectedVariants] = useState<
+    Record<string, string>
+  >({});
   const [paymentChoice, setPaymentChoice] = useState<"cod" | "gateway">("cod");
   const honeypotRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +68,8 @@ export function OrderFormSection({
   const unitPrice = product ? Number(product.price) : 0;
   const total = unitPrice * quantity;
   const cities = useMemo(() => citiesForDepartment(department), [department]);
+  const variantGroups = product?.variants ?? [];
+  const hasVariants = variantGroups.length > 0;
   const showPaymentChoice = landing.checkoutMode === "both";
   const effectivePaymentMethod =
     landing.checkoutMode === "both" ? paymentChoice : landing.checkoutMode;
@@ -89,6 +94,7 @@ export function OrderFormSection({
     setAddress("");
     setNotes("");
     setQuantity(1);
+    setSelectedVariants({});
     setPaymentChoice("cod");
     setFieldErrors({});
   }
@@ -117,16 +123,24 @@ export function OrderFormSection({
       address,
       notes,
       quantity,
+      variants: selectedVariants,
       ...(showPaymentChoice ? { paymentChoice } : {}),
       website: honeypotRef.current?.value ?? "",
     });
 
+    const nextErrors: FieldErrors = {};
     if (!validation.success) {
-      const nextErrors: FieldErrors = {};
       for (const issue of validation.error.issues) {
         const key = String(issue.path[0] ?? "");
         if (key && !nextErrors[key]) nextErrors[key] = issue.message;
       }
+    }
+    for (const group of variantGroups) {
+      if (!selectedVariants[group.name]) {
+        nextErrors[`variant:${group.name}`] = `Selecciona ${group.name.toLowerCase()}`;
+      }
+    }
+    if (!validation.success || Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
       return;
     }
@@ -379,6 +393,44 @@ export function OrderFormSection({
                     placeholder="Notas del pedido (opcional)"
                     className={inputClass}
                   />
+                ) : null}
+
+                {hasVariants ? (
+                  <div
+                    className={
+                      variantGroups.length > 1
+                        ? "grid grid-cols-2 gap-3"
+                        : undefined
+                    }
+                  >
+                    {variantGroups.map((group) => (
+                      <div key={group.name}>
+                        <select
+                          value={selectedVariants[group.name] ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setSelectedVariants((prev) => ({
+                              ...prev,
+                              [group.name]: value,
+                            }));
+                            clearError(`variant:${group.name}`);
+                          }}
+                          aria-label={group.name}
+                          className={inputClass}
+                        >
+                          <option value="">{group.name}</option>
+                          {group.options.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                        <FieldError
+                          message={fieldErrors[`variant:${group.name}`]}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 ) : null}
 
                 <div className="flex items-center justify-between rounded-xl border border-(--lp-text)/10 px-4 py-3">

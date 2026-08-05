@@ -111,6 +111,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Cada variable del producto (talla, color...) debe traer una opción
+  // válida; el cliente no puede inventar variables ni valores.
+  const selectedVariants: Record<string, string> = {};
+  for (const group of product.variants) {
+    const choice = data.variants[group.name];
+    if (!choice || !group.options.includes(choice)) {
+      return json(
+        { success: false, error: `Selecciona ${group.name.toLowerCase()}` },
+        400,
+      );
+    }
+    selectedVariants[group.name] = choice;
+  }
+
   // El precio SIEMPRE se calcula en servidor; el cliente solo envía cantidad.
   const unitPrice = Number(product.price);
   const total = unitPrice * data.quantity;
@@ -131,6 +145,7 @@ export async function POST(request: NextRequest) {
         direccion: data.address,
         notas: data.notes || undefined,
       },
+      selectedVariants,
       quantity: data.quantity,
       unitPrice: unitPrice.toFixed(2),
       total: total.toFixed(2),

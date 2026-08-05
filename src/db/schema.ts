@@ -38,6 +38,11 @@ export type LandingPixels = {
   gaId?: string;
 };
 
+export type ProductVariantGroup = {
+  name: string;
+  options: string[];
+};
+
 export type OrderCustomer = {
   nombres: string;
   apellidos: string;
@@ -118,6 +123,10 @@ export const products = pgTable("products", {
   sku: text("sku"),
   stock: integer("stock").notNull().default(0),
   images: jsonb("images").$type<string[]>().notNull().default([]),
+  variants: jsonb("variants")
+    .$type<ProductVariantGroup[]>()
+    .notNull()
+    .default([]),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -162,6 +171,10 @@ export const orders = pgTable("orders", {
     onDelete: "set null",
   }),
   customer: jsonb("customer").$type<OrderCustomer>().notNull(),
+  selectedVariants: jsonb("selected_variants")
+    .$type<Record<string, string>>()
+    .notNull()
+    .default({}),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
   total: numeric("total", { precision: 12, scale: 2 }).notNull(),

@@ -22,6 +22,12 @@ const productSchema = z.object({
     .min(0, "El stock no puede ser negativo"),
   active: z.boolean(),
   images: z.array(z.string()),
+  variants: z.array(
+    z.object({
+      name: z.string().trim().min(1),
+      options: z.array(z.string().trim().min(1)).min(1),
+    }),
+  ),
 });
 
 export type ProductFormState =
@@ -40,6 +46,22 @@ function parseProductForm(formData: FormData) {
     images = [];
   }
 
+  let variants: { name: string; options: string[] }[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("variants") ?? "[]"));
+    if (Array.isArray(parsed)) {
+      variants = parsed.filter(
+        (v): v is { name: string; options: string[] } =>
+          v &&
+          typeof v.name === "string" &&
+          Array.isArray(v.options) &&
+          v.options.every((o: unknown) => typeof o === "string"),
+      );
+    }
+  } catch {
+    variants = [];
+  }
+
   const compareRaw = String(formData.get("compareAtPrice") ?? "").trim();
 
   return productSchema.safeParse({
@@ -51,6 +73,7 @@ function parseProductForm(formData: FormData) {
     stock: String(formData.get("stock") ?? "0"),
     active: formData.get("active") === "true",
     images,
+    variants,
   });
 }
 
@@ -81,6 +104,7 @@ export async function createProduct(
     stock: data.stock,
     active: data.active,
     images: data.images,
+    variants: data.variants,
   });
 
   revalidatePath("/admin/products");
@@ -112,6 +136,7 @@ export async function updateProduct(
       stock: data.stock,
       active: data.active,
       images: data.images,
+      variants: data.variants,
       updatedAt: new Date(),
     })
     .where(eq(products.id, id));

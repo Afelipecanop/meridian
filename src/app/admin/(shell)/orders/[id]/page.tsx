@@ -179,6 +179,16 @@ export default async function OrderDetailPage({
                 <span className="text-muted-foreground">Producto</span>
                 <span className="font-medium">{productName ?? "—"}</span>
               </div>
+              {Object.keys(order.selectedVariants).length > 0 ? (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Variante</span>
+                  <span className="text-right font-medium">
+                    {Object.entries(order.selectedVariants)
+                      .map(([name, value]) => `${name}: ${value}`)
+                      .join(" · ")}
+                  </span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Cantidad</span>
                 <span className="tabular-nums">×{order.quantity}</span>
