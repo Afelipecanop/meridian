@@ -135,14 +135,22 @@ export function EditorShell({
   const persist = useCallback(
     async (toSave: LandingDraft) => {
       setSaveState("saving");
-      const result = await saveLandingDraft(landing.id, toSave);
-      if (result.success) {
-        setSaveState("saved");
-      } else {
+      try {
+        const result = await saveLandingDraft(landing.id, toSave);
+        if (result.success) {
+          setSaveState("saved");
+        } else {
+          setSaveState("error");
+          toast.error(result.error);
+        }
+        return result;
+      } catch (error) {
         setSaveState("error");
-        toast.error(result.error);
+        const message =
+          error instanceof Error ? error.message : "No se pudo guardar";
+        toast.error(message);
+        return { success: false as const, error: message };
       }
-      return result;
     },
     [landing.id],
   );
@@ -171,12 +179,15 @@ export function EditorShell({
   }
 
   function addSection(type: SectionType) {
+    const entry = sectionRegistry[type];
+    if (!entry) {
+      toast.error(`Tipo de sección desconocido: ${type}`);
+      return;
+    }
     const section: LandingSection = {
       id: crypto.randomUUID(),
       type,
-      settings: structuredClone(
-        sectionRegistry[type].defaults,
-      ) as Record<string, unknown>,
+      settings: structuredClone(entry.defaults) as Record<string, unknown>,
       visible: true,
     };
     setDraft((d) => ({ ...d, sections: [...d.sections, section] }));
@@ -215,26 +226,34 @@ export function EditorShell({
   function handlePublish() {
     startPublish(async () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      const result = await publishLanding(landing.id, draft);
-      if (result.success) {
-        setStatus("published");
-        setPublishedSnapshot(JSON.stringify(draft.sections));
-        setSaveState("saved");
-        toast.success(`Publicada en /${draft.slug}`);
-      } else {
-        toast.error(result.error);
+      try {
+        const result = await publishLanding(landing.id, draft);
+        if (result.success) {
+          setStatus("published");
+          setPublishedSnapshot(JSON.stringify(draft.sections));
+          setSaveState("saved");
+          toast.success(`Publicada en /${draft.slug}`);
+        } else {
+          toast.error(result.error);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo publicar");
       }
     });
   }
 
   function handleUnpublish() {
     startPublish(async () => {
-      const result = await unpublishLanding(landing.id);
-      if (result.success) {
-        setStatus("draft");
-        toast.success("Landing despublicada (vuelve a borrador)");
-      } else {
-        toast.error(result.error);
+      try {
+        const result = await unpublishLanding(landing.id);
+        if (result.success) {
+          setStatus("draft");
+          toast.success("Landing despublicada (vuelve a borrador)");
+        } else {
+          toast.error(result.error);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo despublicar");
       }
     });
   }

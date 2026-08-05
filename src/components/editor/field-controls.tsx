@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { toast } from "sonner";
-import { ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,18 +11,6 @@ import type { ScalarFieldDef } from "./field-defs";
 
 export const selectClass =
   "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-async function uploadFile(file: File): Promise<string | null> {
-  const body = new FormData();
-  body.append("file", file);
-  const res = await fetch("/api/upload", { method: "POST", body });
-  const data = (await res.json()) as { url?: string; error?: string };
-  if (!res.ok || !data.url) {
-    toast.error(data.error ?? `No se pudo subir ${file.name}`);
-    return null;
-  }
-  return data.url;
-}
 
 /** Convierte ISO ↔ valor de <input type="datetime-local"> (hora local). */
 function isoToLocal(iso: string): string {
@@ -40,6 +27,7 @@ function localToIso(local: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
+/** Campo de imagen por URL (sin carga de archivo): pega el enlace y ya. */
 export function ImageControl({
   value,
   onChange,
@@ -47,9 +35,6 @@ export function ImageControl({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
   return (
     <div className="flex flex-col gap-2">
       {value ? (
@@ -70,47 +55,16 @@ export function ImageControl({
           </button>
         </div>
       ) : null}
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="URL o sube un archivo"
-          className="flex-1"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          disabled={uploading}
-          aria-label="Subir imagen"
-          onClick={() => fileRef.current?.click()}
-        >
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            <ImagePlus className="h-4 w-4" aria-hidden />
-          )}
-        </Button>
-      </div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          setUploading(true);
-          const url = await uploadFile(file);
-          setUploading(false);
-          if (url) onChange(url);
-          e.target.value = "";
-        }}
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://…"
       />
     </div>
   );
 }
 
+/** Lista de imágenes por URL: agrega, pega el enlace, quita. */
 export function ImagesControl({
   value,
   onChange,
@@ -118,8 +72,14 @@ export function ImagesControl({
   value: string[];
   onChange: (value: string[]) => void;
 }) {
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState("");
+
+  function addPending() {
+    const url = pending.trim();
+    if (!url) return;
+    onChange([...value, url]);
+    setPending("");
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -145,41 +105,22 @@ export function ImagesControl({
           ))}
         </div>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={uploading}
-        onClick={() => fileRef.current?.click()}
-        className="w-fit"
-      >
-        {uploading ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        ) : (
-          <ImagePlus className="h-4 w-4" aria-hidden />
-        )}
-        Subir imágenes
-      </Button>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={async (e) => {
-          const files = e.target.files;
-          if (!files?.length) return;
-          setUploading(true);
-          const urls: string[] = [];
-          for (const file of Array.from(files)) {
-            const url = await uploadFile(file);
-            if (url) urls.push(url);
-          }
-          setUploading(false);
-          if (urls.length) onChange([...value, ...urls]);
-          e.target.value = "";
-        }}
-      />
+      <div className="flex gap-2">
+        <Input
+          value={pending}
+          onChange={(e) => setPending(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            addPending();
+          }}
+          placeholder="https://…"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={addPending}>
+          <Plus className="h-4 w-4" aria-hidden />
+          Agregar
+        </Button>
+      </div>
     </div>
   );
 }

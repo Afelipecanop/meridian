@@ -15,8 +15,12 @@ import { checkoutSchema, type CheckoutResponse } from "@/lib/zod-schemas/checkou
 import { BoldButton } from "./bold-button";
 import type { SectionProps } from "./types";
 
-const inputClass =
-  "w-full rounded-xl border border-(--lp-text)/15 bg-transparent px-3.5 py-2.5 text-[14.5px] outline-none transition placeholder:text-(--lp-text)/40 focus:border-(--lp-primary) focus:ring-2 focus:ring-(--lp-primary)/20";
+// Sin `w-full` en la base: así el select de país (w-32) no compite por el
+// ancho con la clase compartida — Tailwind no garantiza qué utilidad de
+// ancho gana cuando ambas viven en el mismo string de clases.
+const inputBase =
+  "rounded-xl border border-(--lp-text)/15 bg-transparent px-3.5 py-2.5 text-[14.5px] outline-none transition placeholder:text-(--lp-text)/40 focus:border-(--lp-primary) focus:ring-2 focus:ring-(--lp-primary)/20";
+const inputClass = `w-full ${inputBase}`;
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -265,7 +269,7 @@ export function OrderFormSection({
                         clearError("phoneCountry");
                       }}
                       aria-label="País del teléfono"
-                      className={`${inputClass} w-32 shrink-0`}
+                      className={`${inputBase} w-24 shrink-0`}
                     >
                       {COUNTRIES.map((c) => (
                         <option key={c.code} value={c.code}>

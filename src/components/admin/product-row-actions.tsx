@@ -41,16 +41,28 @@ export function ProductRowActions({
 
   function handleToggle() {
     startTransition(async () => {
-      await toggleProductActive(id, !active);
-      toast.success(active ? "Producto desactivado" : "Producto activado");
+      try {
+        await toggleProductActive(id, !active);
+        toast.success(active ? "Producto desactivado" : "Producto activado");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo actualizar el producto",
+        );
+      }
     });
   }
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteProduct(id);
-      toast.success("Producto eliminado");
-      setConfirmOpen(false);
+      try {
+        await deleteProduct(id);
+        toast.success("Producto eliminado");
+        setConfirmOpen(false);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo eliminar el producto",
+        );
+      }
     });
   }
 

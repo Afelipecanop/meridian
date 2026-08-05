@@ -53,28 +53,46 @@ export function LandingRowActions({
 
   function handleDuplicate() {
     startTransition(async () => {
-      await duplicateLanding(id);
-      toast.success("Landing duplicada como borrador");
+      try {
+        await duplicateLanding(id);
+        toast.success("Landing duplicada como borrador");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo duplicar la landing",
+        );
+      }
     });
   }
 
   function handleArchiveToggle() {
     startTransition(async () => {
-      if (status === "archived") {
-        await restoreLanding(id);
-        toast.success("Landing restaurada como borrador");
-      } else {
-        await archiveLanding(id);
-        toast.success("Landing archivada (ya no es pública)");
+      try {
+        if (status === "archived") {
+          await restoreLanding(id);
+          toast.success("Landing restaurada como borrador");
+        } else {
+          await archiveLanding(id);
+          toast.success("Landing archivada (ya no es pública)");
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo actualizar la landing",
+        );
       }
     });
   }
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteLanding(id);
-      toast.success("Landing eliminada");
-      setConfirmOpen(false);
+      try {
+        await deleteLanding(id);
+        toast.success("Landing eliminada");
+        setConfirmOpen(false);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo eliminar la landing",
+        );
+      }
     });
   }
 
