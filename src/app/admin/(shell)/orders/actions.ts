@@ -43,16 +43,29 @@ export async function updateOrderStatus(
   if (!current) return { success: false, error: "Pedido no encontrado" };
   if (current.status === parsed.data) return { success: true };
 
-  await db
-    .update(orders)
-    .set({ status: parsed.data, updatedAt: new Date() })
-    .where(eq(orders.id, id));
+  try {
+    await db
+      .update(orders)
+      .set({ status: parsed.data, updatedAt: new Date() })
+      .where(eq(orders.id, id));
 
-  await db.insert(orderEvents).values({
-    orderId: id,
-    type: "status_changed",
-    data: { from: current.status, to: parsed.data },
-  });
+    await db.insert(orderEvents).values({
+      orderId: id,
+      type: "status_changed",
+      data: { from: current.status, to: parsed.data },
+    });
+  } catch (error) {
+    // Suele ser un enum "order_status" desactualizado en la base de datos
+    // (falta correr `npm run db:migrate` con el DATABASE_URL de producción).
+    console.error("updateOrderStatus", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? `No se pudo guardar: ${error.message}`
+          : "No se pudo guardar el nuevo estado",
+    };
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);
@@ -82,16 +95,27 @@ export async function markOrderPaid(id: string): Promise<OrderActionResult> {
   }
   if (order.paymentStatus === "paid") return { success: true };
 
-  await db
-    .update(orders)
-    .set({ paymentStatus: "paid", updatedAt: new Date() })
-    .where(eq(orders.id, id));
+  try {
+    await db
+      .update(orders)
+      .set({ paymentStatus: "paid", updatedAt: new Date() })
+      .where(eq(orders.id, id));
 
-  await db.insert(orderEvents).values({
-    orderId: id,
-    type: "payment",
-    data: { source: "admin", from: order.paymentStatus, to: "paid" },
-  });
+    await db.insert(orderEvents).values({
+      orderId: id,
+      type: "payment",
+      data: { source: "admin", from: order.paymentStatus, to: "paid" },
+    });
+  } catch (error) {
+    console.error("markOrderPaid", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? `No se pudo guardar: ${error.message}`
+          : "No se pudo marcar como pagado",
+    };
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);

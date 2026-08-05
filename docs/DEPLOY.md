@@ -37,11 +37,18 @@ Notas:
 Con `DATABASE_URL` de producción exportada localmente:
 
 ```bash
-npm run db:migrate     # aplica 0000 + 0001
+npm run db:migrate     # aplica todas las migraciones pendientes (src/db/migrations)
 ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD='UnaClaveFuerte' npm run db:seed
 ```
 
 ⚠️ No dejes la contraseña por defecto (`admin1234`) en producción.
+
+⚠️ **Cada vez que `src/db/schema.ts` cambie** (nueva migración en
+`src/db/migrations/`), hay que volver a correr `npm run db:migrate` contra
+producción — Vercel solo despliega el código, nunca migra la base de datos
+por ti. Si olvidas este paso, la app queda con columnas/enums desactualizados
+y las operaciones que dependen del cambio (ej. cambiar el estado de un
+pedido a un valor nuevo) fallan silenciosamente o con un error de Postgres.
 
 ## 5. Webhook de la pasarela
 
