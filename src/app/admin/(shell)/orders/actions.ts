@@ -122,6 +122,13 @@ export async function markOrderPaid(id: string): Promise<OrderActionResult> {
   return { success: true };
 }
 
+export async function deleteOrder(id: string) {
+  await requireSession();
+  await db.delete(orders).where(eq(orders.id, id));
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${id}`);
+}
+
 export async function addOrderNote(
   id: string,
   note: string,

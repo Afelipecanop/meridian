@@ -31,6 +31,7 @@ import {
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { PaymentStatusControl } from "@/components/admin/payment-status-control";
 import { OrderNoteForm } from "@/components/admin/order-note-form";
+import { OrderRowActions } from "@/components/admin/order-row-actions";
 
 export const metadata: Metadata = { title: "Detalle de pedido" };
 
@@ -163,6 +164,7 @@ export default async function OrderDetailPage({
           </p>
         </div>
         <OrderStatusSelect orderId={order.id} status={order.status} />
+        <OrderRowActions id={order.id} redirectOnDelete />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">

@@ -22,6 +22,7 @@ import {
   type OrderStatus,
   type PaymentStatus,
 } from "@/components/admin/order-status";
+import { OrderRowActions } from "@/components/admin/order-row-actions";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -220,6 +221,7 @@ export default async function OrdersPage({
                 <TableHead>Pago</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Fecha</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -262,6 +264,9 @@ export default async function OrdersPage({
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(order.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <OrderRowActions id={order.id} />
                   </TableCell>
                 </TableRow>
               ))}
