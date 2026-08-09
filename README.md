@@ -113,7 +113,7 @@ flowchart LR
 - Login con credenciales (Auth.js, sesión JWT), acceso restringido a formato escritorio
 - Editor visual tipo Shopify: secciones reordenables (drag & drop), panel de ajustes, preview en vivo, autosave, borrador → publicar
 - CRUD de productos con imágenes por URL (carrete ilimitado) y variantes opcionales (talla, color, sabor…), y CRUD de landings (duplicar, archivar, restaurar)
-- Módulo de pedidos: estado logístico y estado de pago **independientes**, línea de tiempo de eventos, notas internas
+- Módulo de pedidos: estado logístico y estado de pago **independientes**, línea de tiempo de eventos, notas internas, eliminar pedidos con confirmación
 - Dashboard con ventas del día, pedidos por estado y por landing
 - Pago online por landing vía capa `PaymentProvider` (Bold activo, Wompi como alternativa)
 
@@ -125,6 +125,7 @@ flowchart LR
 
 > Con la plataforma en producción, esta sección funciona como changelog: nuevas implementaciones y correcciones de bugs encontrados sobre la marcha.
 
+- **Eliminar pedidos:** la lista y el detalle de pedidos ahora tienen un botón de eliminar (con diálogo de confirmación) para poder limpiar pedidos de prueba sin tocar la base de datos a mano. Borrar un pedido elimina también su historial de eventos (`order_events`), por una cascada ya definida en el esquema desde el módulo de pedidos original.
 - **Variantes de producto:** los productos pueden tener variables opcionales (talla, color, sabor…), cada una con su lista de opciones, definidas desde una nueva tarjeta "Variantes" en el formulario de producto. Cuando un producto tiene variantes, el formulario de pedido de la landing muestra un selector obligatorio por cada una justo antes de la cantidad; si el producto no tiene ninguna, esa sección no aparece. La selección viaja validada (cliente y servidor) hasta el pedido y se ve en su detalle dentro del admin.
 - **Rediseño de la pantalla "solo escritorio" + fix en el editor:** la pantalla que bloquea `/admin/*` en móvil dejó de reciclar el copy del 404 genérico — ahora tiene diseño propio (mismo lenguaje visual que login/home), mensaje específico y un botón para volver al login. El mismo bloqueo, que ya existía en el resto del admin desde antes, se extendió al editor de landings (`/admin/landings/:id/editor`), que por vivir fuera del layout del panel nunca lo había heredado.
 - **Imágenes de producto solo por URL:** se quitó la subida de archivos del formulario de productos (`/api/upload` fallaba en producción sin `BLOB_READ_WRITE_TOKEN` configurado) y se reemplazó por un campo de URL + botón "Agregar" que arma un carrete sin límite de imágenes, con el mismo patrón que ya usaba el editor de secciones desde la Etapa 9.

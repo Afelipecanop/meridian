@@ -9,7 +9,7 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 - Infraestructura: **Vercel + Postgres gestionado** (Neon o Supabase, solo como BD).
 - Pasarela de pago activa en producción: **Bold** (Etapa 8). Wompi quedó implementado desde la Etapa 6 como alternativa dentro de la misma capa `PaymentProvider`, pero no es la que se usa en vivo.
 
-**Estado actual (última actualización: 2026-08-05):**
+**Estado actual (última actualización: 2026-08-08):**
 
 | Etapa | Estado |
 |-------|--------|
@@ -26,6 +26,7 @@ Plataforma de landing pages de producto único con editor visual tipo Shopify y 
 | 10 — Imágenes de producto por URL y admin solo escritorio | ✅ Completada (post-lanzamiento) |
 | 11 — Rediseño de la pantalla "solo escritorio" y fix en el editor | ✅ Completada (post-lanzamiento) |
 | 12 — Variantes de producto | ✅ Completada (post-lanzamiento) |
+| 13 — Eliminar pedidos desde el admin | ✅ Completada (post-lanzamiento) |
 
 ---
 
@@ -306,6 +307,18 @@ src/
 **Criterio de éxito:** un producto sin variantes no cambia en nada su formulario de pedido; un producto con variantes exige elegir cada una antes de poder enviar el pedido, y esa elección queda visible en el pedido dentro del admin.
 
 **✅ Completada (2026-08-05).** Nota de alcance: todas las variantes de un mismo producto comparten el precio (`product.price`); no hay soporte para que una opción específica (ej. una talla) cambie el precio — si se necesita a futuro, requiere resolver el precio en servidor contra `product.variants` en `/api/checkout`, igual que ya se hace con la disponibilidad.
+
+### Etapa 13 — Eliminar pedidos desde el admin (post-lanzamiento)
+**Objetivo:** el propietario necesitaba poder borrar pedidos de prueba creados al probar el checkout, algo que el módulo de pedidos no permitía (solo cambiar de estado o agregar notas).
+
+- [x] **Server action `deleteOrder`** (`src/app/admin/(shell)/orders/actions.ts`): borra el pedido por `id`; los eventos del pedido (`order_events`) se eliminan solos por el `onDelete: "cascade"` ya definido en el esquema (`orderId` referencia `orders.id`), sin necesidad de un segundo `delete`.
+- [x] **Componente `OrderRowActions`** (`src/components/admin/order-row-actions.tsx`): botón de papelera + `AlertDialog` de confirmación, mismo patrón ya usado en `ProductRowActions`/`LandingRowActions`. Acepta un flag `redirectOnDelete` para volver a `/admin/orders` cuando se borra desde el detalle en vez de la lista.
+- [x] **Lista de pedidos** (`/admin/orders`): nueva columna "Acciones" con el botón de eliminar por fila.
+- [x] **Detalle de pedido** (`/admin/orders/:id`): mismo botón junto al selector de estado, con redirección a la lista tras borrar.
+
+**Criterio de éxito:** desde la lista o el detalle de un pedido, un clic + confirmación lo elimina permanentemente (junto con su historial de eventos) y desaparece de ambas vistas.
+
+**✅ Completada (2026-08-08).** `tsc --noEmit` y `next build` en verde. Sin migración de esquema (la cascada ya existía desde la Etapa 5).
 
 ---
 
