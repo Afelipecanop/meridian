@@ -2,7 +2,7 @@
 
 # 🧭 Meridian
 
-**Plataforma de landing pages de producto único con editor visual tipo Shopify y panel de administración**
+**Plataforma de landing pages de producto único con editor visual y panel de administración**
 
 Autenticación · Editor visual (drag & drop) · Landing pública SSR/ISR · Checkout COD y pasarela · Pedidos · Dashboard
 
@@ -39,7 +39,7 @@ Autenticación · Editor visual (drag & drop) · Landing pública SSR/ISR · Che
 
 ## Sobre el proyecto
 
-**Meridian** es una plataforma para vender un producto único por landing, con un editor visual tipo Shopify y un panel de administración completo. Cada landing (`/:slug`) es una página autónoma sin navegación de salida, pensada para tráfico de anuncios: se construye como un JSON ordenado de secciones (hero, beneficios, testimonios, formulario de pedido, HTML personalizado…) que se edita arrastrando bloques y se renderiza en servidor con SSR/ISR.
+**Meridian** es una plataforma para vender un producto único por landing, con un editor visual y un panel de administración completo. Cada landing (`/:slug`) es una página autónoma sin navegación de salida, pensada para tráfico de anuncios: se construye como un JSON ordenado de secciones (hero, beneficios, testimonios, formulario de pedido, HTML personalizado…) que se edita arrastrando bloques y se renderiza en servidor con SSR/ISR.
 
 El backend es **Next.js 16 (App Router)** con Server Components y Server Actions sobre **PostgreSQL** (Drizzle ORM), sin una API separada — un solo proyecto cubre panel, editor, landing pública y checkout.
 
